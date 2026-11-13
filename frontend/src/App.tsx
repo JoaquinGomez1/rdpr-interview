@@ -11,8 +11,13 @@ type Point = { x: number; y: number }
 type Tool = 'arrow' | 'circle'
 type ShapeMark = { id: string; tool: Tool; start: Point; end: Point; note?: string }
 type Mark = ShapeMark | { id: string; tool: 'text'; start: Point; note: string }
-type KeyImage = { id: string; view: number; caption: string; marks?: Mark[] }
-type Draft = { report: string; keys: KeyImage[]; marks: Record<number, Mark[]> }
+type KeyImage = { id: string; view: number; caption: string; marks: Mark[] }
+type Draft = { report: string; keys: KeyImage[] }
+type StoredDraft = {
+  report: string
+  keys: (Omit<KeyImage, 'marks'> & { marks?: Mark[] })[]
+  marks?: Record<number, Mark[]>
+}
 
 function cleanMarks(items: Mark[]): Mark[] {
   return items.flatMap((mark): Mark[] => {
@@ -24,19 +29,28 @@ function cleanMarks(items: Mark[]): Mark[] {
 }
 
 function withoutEmptyNotes(draft: Draft): Draft {
-  const marks = Object.fromEntries(Object.entries(draft.marks).map(([view, items]) => [view, cleanMarks(items)]))
-  const keys = draft.keys.map(key => ({ ...key, marks: cleanMarks(key.marks ?? []) }))
-  return { ...draft, keys, marks }
+  return { ...draft, keys: draft.keys.map(key => ({ ...key, marks: cleanMarks(key.marks) })) }
 }
 
 function readDraft(): Draft {
   try {
     const saved = localStorage.getItem(storageKey)
-    if (saved) return withoutEmptyNotes(JSON.parse(saved) as Draft)
+    if (saved) {
+      const { report, keys, marks } = JSON.parse(saved) as StoredDraft
+      const migratedViews = new Set<number>()
+      return {
+        report,
+        keys: keys.map(key => {
+          const legacyMarks = migratedViews.has(key.view) ? [] : (marks?.[key.view] ?? [])
+          migratedViews.add(key.view)
+          return { ...key, marks: cleanMarks([...(key.marks ?? []), ...legacyMarks]) }
+        }),
+      }
+    }
   } catch {
     // The editor still works when browser storage is unavailable.
   }
-  return { report: '', keys: [], marks: {} }
+  return { report: '', keys: [] }
 }
 
 function Shape({ mark, active, onEdit }: { mark: ShapeMark; active: boolean; onEdit?: () => void }) {
@@ -73,7 +87,7 @@ export default function App() {
   const cards = useRef(new Map<string, HTMLLIElement>())
   const focusAfterMove = useRef<string | null>(null)
   const keyEntry = draft.keys.find(key => key.id === activeKey)
-  const marks = (keyEntry ? keyEntry.marks : draft.marks[view]) ?? []
+  const marks = keyEntry?.marks ?? []
   const existingPositions = draft.keys.flatMap((key, index) => key.view === view ? [index + 1] : [])
   const duplicateHint = existingPositions.length > 0
     ? `Already in the report as key image ${existingPositions.join(', ')}.`
@@ -101,15 +115,18 @@ export default function App() {
   function openView(index: number, keyId?: string) {
     setView(index)
     setActiveKey(keyId)
+    setTool(undefined)
     setSelected(undefined)
     setDrawing(undefined)
     setFailedView(undefined)
   }
 
   function updateMarks(update: (current: Mark[]) => Mark[]) {
-    setDraft(current => activeKey
-      ? { ...current, keys: current.keys.map(key => key.id === activeKey ? { ...key, marks: update(key.marks ?? []) } : key) }
-      : { ...current, marks: { ...current.marks, [view]: update(current.marks[view] ?? []) } })
+    if (!activeKey) return
+    setDraft(current => ({
+      ...current,
+      keys: current.keys.map(key => key.id === activeKey ? { ...key, marks: update(key.marks) } : key),
+    }))
   }
 
   function point(event: MouseEvent<SVGSVGElement>, allowOutside = false): Point {
@@ -168,7 +185,7 @@ export default function App() {
             <div className="image-frame">
               {failedView === view && <p className="image-error" role="alert">This view could not load.</p>}
               <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
-              {failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true" className={tool ? "drawing-enabled" : undefined}
+              {keyEntry && failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true" className={tool ? "drawing-enabled" : undefined}
                 onDoubleClick={event => {
                   if (event.target !== event.currentTarget) return
                   const id = crypto.randomUUID()
@@ -256,11 +273,17 @@ export default function App() {
               })}
             </div>
             <div className="toolbar">
-              <div className="annotation-tools" role="group" aria-label="Annotation tools">
-                <button aria-pressed={tool === 'arrow'} onClick={() => setTool(tool === 'arrow' ? undefined : 'arrow')}>↗ Arrow</button>
-                <button aria-pressed={tool === 'circle'} onClick={() => setTool(tool === 'circle' ? undefined : 'circle')}>○ Circle</button>
-              </div>
-              <p>{tool === 'circle' ? 'Press at the center and drag outward. ' : tool ? 'Drag to draw. ' : ''}Double-click the image to add text.</p>
+              {keyEntry ? (
+                <>
+                  <div className="annotation-tools" role="group" aria-label="Annotation tools">
+                    <button aria-pressed={tool === 'arrow'} onClick={() => setTool(tool === 'arrow' ? undefined : 'arrow')}>↗ Arrow</button>
+                    <button aria-pressed={tool === 'circle'} onClick={() => setTool(tool === 'circle' ? undefined : 'circle')}>○ Circle</button>
+                  </div>
+                  <p>{tool === 'circle' ? 'Press at the center and drag outward. ' : tool ? 'Drag to draw. ' : ''}Double-click the image to add text.</p>
+                </>
+              ) : (
+                <p>{existingPositions.length ? 'Open a key image from the report to annotate it.' : 'Add this view as a key image to annotate it.'}</p>
+              )}
             </div>
             <dialog className="marker-dialog" ref={removalDialog} aria-labelledby="remove-marker-title"
               onClose={() => setPendingRemoval(undefined)}>
