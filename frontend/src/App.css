@@ -13,17 +13,31 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .accent { background: #68efcc; color: #10251f; font-weight: 700; border-color: transparent; }
 .accent:hover { background: #95f7dd; }
 .viewer { border: 1px solid #30414e; border-radius: 10px; background: #080e13; overflow: hidden; }
-.toolbar { padding: .55rem .75rem; background: #141e27; }
-.toolbar button + button { margin-left: .35rem; }
-.viewer-body { display: grid; grid-template-columns: minmax(125px, 24%) minmax(0, 1fr); align-items: start; }
-.notes { padding: .75rem; }
-.notes p, .annotation label, .annotation button, .thumbs span, #key-help, #reorder-help { font-size: .82rem; }
-.annotation { margin-top: .75rem; }
-.annotation textarea { display: block; margin: .25rem 0; min-height: 4rem; }
+.view-title, .toolbar, .annotation-editor { padding: .55rem .75rem; background: #141e27; }
+.toolbar, .annotation-editor { flex-wrap: wrap; }
+.annotation-tools { display: flex; gap: .35rem; }
+.toolbar p, .thumbs span, #key-help, #reorder-help { font-size: .82rem; }
+.annotation-editor { display: flex; align-items: center; gap: .5rem; border-top: 1px solid #30414e; }
+.annotation-editor textarea { flex: 1 1 12rem; min-width: 0; }
 .image-frame { position: relative; aspect-ratio: 1; }
 .image-frame img, .image-frame svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .image-frame img { object-fit: fill; }
-.image-frame svg { touch-action: none; cursor: crosshair; }
+.image-frame svg { pointer-events: none; }
+.image-frame svg.drawing-enabled { pointer-events: auto; touch-action: none; cursor: crosshair; }
+.mark-label {
+  position: absolute;
+  max-width: 42%;
+  max-height: 45%;
+  overflow: auto;
+  overflow-wrap: anywhere;
+  border: 0;
+  padding: .05rem .2rem;
+  background: #080e13c9;
+  color: #fff;
+  text-align: left;
+  white-space: pre-wrap;
+}
+.mark-label:hover, .mark-label[aria-expanded="true"] { background: #141e27; }
 .image-error { position: relative; z-index: 2; padding: 2rem 1rem; }
 .thumbs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .45rem; margin-top: .75rem; }
 .thumbs button { min-width: 0; padding: .3rem; display: grid; gap: .2rem; }
@@ -47,7 +61,5 @@ p, .status, .key-heading span { color: #a1b4c2; }
 @media (max-width: 550px) {
   .masthead, .workspace { padding-inline: .65rem; }
   .panel { padding: .65rem; }
-  .viewer-body { grid-template-columns: 1fr; }
-  .notes { grid-row: 2; }
   .thumbs span { font-size: .68rem; }
 }

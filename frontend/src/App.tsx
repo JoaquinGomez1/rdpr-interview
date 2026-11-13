@@ -37,7 +37,7 @@ function Shape({ mark, active }: { mark: Mark; active: boolean }) {
 export default function App() {
   const [draft, setDraft] = useState(readDraft)
   const [view, setView] = useState(0)
-  const [tool, setTool] = useState<Tool>('arrow')
+  const [tool, setTool] = useState<Tool>()
   const [selected, setSelected] = useState<string>()
   const [drawing, setDrawing] = useState<Mark>()
   const [announcement, setAnnouncement] = useState('')
@@ -47,6 +47,7 @@ export default function App() {
   const cards = useRef(new Map<string, HTMLLIElement>())
   const focusAfterMove = useRef<string | null>(null)
   const marks = draft.marks[view] ?? []
+  const selectedMark = marks.find(mark => mark.id === selected)
 
   useEffect(() => {
     let failed = false
@@ -114,60 +115,78 @@ export default function App() {
             <button className="accent" disabled={draft.keys.length >= limit} onClick={() => addKey(view)}>+ Add key image</button>
           </div>
           <div className="viewer">
+            <div className="view-title"><strong>{views[view]}</strong></div>
+            <div className="image-frame">
+              {failedView === view && <p className="image-error" role="alert">This view could not load.</p>}
+              <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
+              {failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true" className={tool ? "drawing-enabled" : undefined}
+                onPointerDown={event => {
+                  if (!tool || !event.isPrimary || event.button !== 0) return
+                  event.currentTarget.setPointerCapture(event.pointerId)
+                  const start = point(event)
+                  setDrawing({ id: crypto.randomUUID(), tool, start, end: start, note: '' })
+                }}
+                onPointerMove={event => {
+                  if (drawing && event.currentTarget.hasPointerCapture(event.pointerId)) {
+                    setDrawing({ ...drawing, end: point(event) })
+                  }
+                }}
+                onPointerUp={event => {
+                  if (!drawing || !event.currentTarget.hasPointerCapture(event.pointerId)) return
+                  const end = point(event)
+                  setDrawing(undefined)
+                  if (Math.hypot(end.x - drawing.start.x, end.y - drawing.start.y) < 6) return
+                  updateMarks(current => [...current, { ...drawing, end }])
+                  setSelected(drawing.id)
+                }}
+                onPointerCancel={() => setDrawing(undefined)}
+                onLostPointerCapture={() => setDrawing(undefined)}>
+                <defs>
+                  <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#68efcc" /></marker>
+                  <marker id="active-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffe291" /></marker>
+                </defs>
+                {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} />)}
+                {drawing && <Shape mark={drawing} active />}
+              </svg>}
+              {failedView !== view && marks.map(mark => {
+                const { start, end } = mark
+                const isCircle = mark.tool === 'circle'
+                const x = isCircle ? start.x : (start.x + end.x) / 2
+                const y = isCircle ? start.y : (start.y + end.y) / 2
+                const radius = isCircle ? Math.hypot(end.x - start.x, end.y - start.y) : 0
+                const side = x <= 300 ? 'left' : 'right'
+                const distance = side === 'left' ? x : 600 - x
+                const horizontal = Math.min(55, (distance + radius) / 6)
+                const shape = isCircle ? 'circle' : 'arrow'
+                return (
+                  <button key={mark.id} className="mark-label"
+                    aria-label={mark.note ? `Edit ${shape} note: ${mark.note}` : `Add ${shape} note`}
+                    aria-expanded={selected === mark.id}
+                    style={{ [side]: `calc(${horizontal}% + .35rem)`, [y <= 300 ? 'top' : 'bottom']: `${Math.min(y, 600 - y) / 6}%` }}
+                    onClick={() => setSelected(selected === mark.id ? undefined : mark.id)}>
+                    {mark.note || 'Add note'}
+                  </button>
+                )
+              })}
+            </div>
             <div className="toolbar">
-              <strong>{views[view]}</strong>
-              <div role="group" aria-label="Annotation tool">
-                <button aria-pressed={tool === 'arrow'} onClick={() => setTool('arrow')}>↗ Arrow</button>
-                <button aria-pressed={tool === 'circle'} onClick={() => setTool('circle')}>○ Circle</button>
+              <div className="annotation-tools" role="group" aria-label="Annotation tools">
+                <button aria-pressed={tool === 'arrow'} onClick={() => setTool(tool === 'arrow' ? undefined : 'arrow')}>↗ Arrow</button>
+                <button aria-pressed={tool === 'circle'} onClick={() => setTool(tool === 'circle' ? undefined : 'circle')}>○ Circle</button>
               </div>
+              <p>{tool ? 'Drag on the image to draw.' : 'Select a tool to draw on the image.'}</p>
             </div>
-            <div className="viewer-body">
-              <aside className="notes" aria-label="Image annotations">
-                <h3>Annotations</h3>
-                <p>Drag on the image to draw {tool === 'arrow' ? 'an arrow' : 'a circle'}.</p>
-                {marks.map((mark, index) => (
-                  <div className="annotation" key={mark.id}>
-                    <label htmlFor={mark.id}>{mark.tool === 'arrow' ? 'Arrow' : 'Circle'} {index + 1}</label>
-                    <textarea id={mark.id} value={mark.note} maxLength={240} placeholder="Add a note…" onFocus={() => setSelected(mark.id)}
-                      onChange={event => updateMarks(current => current.map(item => item.id === mark.id ? { ...item, note: event.target.value } : item))} />
-                    <button onClick={() => updateMarks(current => current.filter(item => item.id !== mark.id))}>Remove mark</button>
-                  </div>
-                ))}
-              </aside>
-              <div className="image-frame">
-                {failedView === view && <p className="image-error" role="alert">This view could not load.</p>}
-                <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
-                {failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true"
-                  onPointerDown={event => {
-                    if (!event.isPrimary || event.button !== 0) return
-                    event.currentTarget.setPointerCapture(event.pointerId)
-                    const start = point(event)
-                    setDrawing({ id: crypto.randomUUID(), tool, start, end: start, note: '' })
-                  }}
-                  onPointerMove={event => {
-                    if (drawing && event.currentTarget.hasPointerCapture(event.pointerId)) {
-                      setDrawing({ ...drawing, end: point(event) })
-                    }
-                  }}
-                  onPointerUp={event => {
-                    if (!drawing || !event.currentTarget.hasPointerCapture(event.pointerId)) return
-                    const end = point(event)
-                    setDrawing(undefined)
-                    if (Math.hypot(end.x - drawing.start.x, end.y - drawing.start.y) < 6) return
-                    updateMarks(current => [...current, { ...drawing, end }])
-                    setSelected(drawing.id)
-                  }}
-                  onPointerCancel={() => setDrawing(undefined)}
-                  onLostPointerCapture={() => setDrawing(undefined)}>
-                  <defs>
-                    <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#68efcc" /></marker>
-                    <marker id="active-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffe291" /></marker>
-                  </defs>
-                  {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} />)}
-                  {drawing && <Shape mark={drawing} active />}
-                </svg>}
+            {selectedMark && failedView !== view && (
+              <div className="annotation-editor">
+                <label htmlFor={selectedMark.id}>{selectedMark.tool === 'arrow' ? 'Arrow' : 'Circle'} note</label>
+                <textarea id={selectedMark.id} value={selectedMark.note} rows={2} maxLength={240} placeholder="Add a note…"
+                  onChange={event => updateMarks(current => current.map(mark => mark.id === selectedMark.id ? { ...mark, note: event.target.value } : mark))} />
+                <button onClick={() => {
+                  updateMarks(current => current.filter(mark => mark.id !== selectedMark.id))
+                  setSelected(undefined)
+                }}>Remove mark</button>
               </div>
-            </div>
+            )}
           </div>
           <div className="thumbs" aria-label="Study images">
             {views.map((name, index) => (
