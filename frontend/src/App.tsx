@@ -1,122 +1,233 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
+import { useEffect, useRef, useState } from 'react'
+import type { PointerEvent } from 'react'
 import './App.css'
 
-function App() {
-  const [count, setCount] = useState(0)
+const views = ['Frontal chest', 'Lateral chest', 'Oblique chest', 'Axial slice', 'Coronal slice']
+const storageKey = 'radpair-annotation-experiment'
+const limit = 15
+const source = (view: number) => `${import.meta.env.BASE_URL}study/view-${view + 1}.png`
 
+type Point = { x: number; y: number }
+type Tool = 'arrow' | 'circle'
+type Mark = { id: string; tool: Tool; start: Point; end: Point; note: string }
+type KeyImage = { id: string; view: number; caption: string }
+type Draft = { report: string; keys: KeyImage[]; marks: Record<number, Mark[]> }
+
+function readDraft(): Draft {
+  try {
+    const saved = localStorage.getItem(storageKey)
+    if (saved) return JSON.parse(saved) as Draft
+  } catch {
+    // The editor still works when browser storage is unavailable.
+  }
+  return { report: '', keys: [], marks: {} }
+}
+
+function Shape({ mark, active }: { mark: Mark; active: boolean }) {
+  const { start, end, tool } = mark
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+    <g stroke={active ? '#ffe291' : '#68efcc'} strokeWidth="2.5" fill="none">
+      {tool === 'arrow'
+        ? <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} markerEnd={active ? 'url(#active-tip)' : 'url(#tip)'} />
+        : <circle cx={start.x} cy={start.y} r={Math.hypot(end.x - start.x, end.y - start.y)} />}
+    </g>
   )
 }
 
-export default App
+export default function App() {
+  const [draft, setDraft] = useState(readDraft)
+  const [view, setView] = useState(0)
+  const [tool, setTool] = useState<Tool>('arrow')
+  const [selected, setSelected] = useState<string>()
+  const [drawing, setDrawing] = useState<Mark>()
+  const [announcement, setAnnouncement] = useState('')
+  const [storageError, setStorageError] = useState(false)
+  const [failedView, setFailedView] = useState<number>()
+  const [dragOver, setDragOver] = useState(false)
+  const cards = useRef(new Map<string, HTMLLIElement>())
+  const focusAfterMove = useRef<string | null>(null)
+  const marks = draft.marks[view] ?? []
+
+  useEffect(() => {
+    let failed = false
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(draft))
+    } catch {
+      failed = true
+    }
+    // Report the result of writing to browser storage.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setStorageError(failed)
+  }, [draft])
+
+  useEffect(() => {
+    if (focusAfterMove.current) cards.current.get(focusAfterMove.current)?.focus()
+    focusAfterMove.current = null
+  }, [draft.keys])
+
+  function openView(index: number) {
+    setView(index)
+    setSelected(undefined)
+    setDrawing(undefined)
+    setFailedView(undefined)
+  }
+
+  function updateMarks(update: (current: Mark[]) => Mark[]) {
+    setDraft(current => ({ ...current, marks: { ...current.marks, [view]: update(current.marks[view] ?? []) } }))
+  }
+
+  function point(event: PointerEvent<SVGSVGElement>): Point {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const scale = (value: number, origin: number, size: number) => Math.max(0, Math.min(600, (value - origin) / size * 600))
+    return { x: scale(event.clientX, rect.left, rect.width), y: scale(event.clientY, rect.top, rect.height) }
+  }
+
+  function addKey(index: number) {
+    if (!Number.isInteger(index) || index < 0 || index >= views.length || draft.keys.length >= limit) return
+    const id = crypto.randomUUID()
+    setDraft(current => ({ ...current, keys: [...current.keys, { id, view: index, caption: '' }] }))
+    setAnnouncement(`${views[index]} added to key images.`)
+  }
+
+  function moveKey(id: string, destination: number, focus = false) {
+    const from = draft.keys.findIndex(key => key.id === id)
+    if (from < 0 || destination < 0 || destination >= draft.keys.length || from === destination) return
+    const keys = [...draft.keys]
+    const [entry] = keys.splice(from, 1)
+    keys.splice(destination, 0, entry)
+    if (focus) focusAfterMove.current = id
+    setDraft(current => ({ ...current, keys }))
+    setAnnouncement(`Moved to position ${destination + 1} of ${keys.length}.`)
+  }
+
+  return (
+    <>
+      <header className="masthead">
+        <div><span className="brand">RADPAIR</span><h1>Study reporting</h1></div>
+        <span className="status" role="status">{storageError ? 'Draft could not be saved locally' : 'Draft saved on this device'}</span>
+      </header>
+
+      <main className="workspace">
+        <section className="study panel" aria-labelledby="study-title">
+          <div className="section-head">
+            <div><h2 id="study-title">Chest study</h2><p>5 synthetic views</p></div>
+            <button className="accent" disabled={draft.keys.length >= limit} onClick={() => addKey(view)}>+ Add key image</button>
+          </div>
+          <div className="viewer">
+            <div className="toolbar">
+              <strong>{views[view]}</strong>
+              <div role="group" aria-label="Annotation tool">
+                <button aria-pressed={tool === 'arrow'} onClick={() => setTool('arrow')}>↗ Arrow</button>
+                <button aria-pressed={tool === 'circle'} onClick={() => setTool('circle')}>○ Circle</button>
+              </div>
+            </div>
+            <div className="viewer-body">
+              <aside className="notes" aria-label="Image annotations">
+                <h3>Annotations</h3>
+                <p>Drag on the image to draw {tool === 'arrow' ? 'an arrow' : 'a circle'}.</p>
+                {marks.map((mark, index) => (
+                  <div className="annotation" key={mark.id}>
+                    <label htmlFor={mark.id}>{mark.tool === 'arrow' ? 'Arrow' : 'Circle'} {index + 1}</label>
+                    <textarea id={mark.id} value={mark.note} maxLength={240} placeholder="Add a note…" onFocus={() => setSelected(mark.id)}
+                      onChange={event => updateMarks(current => current.map(item => item.id === mark.id ? { ...item, note: event.target.value } : item))} />
+                    <button onClick={() => updateMarks(current => current.filter(item => item.id !== mark.id))}>Remove mark</button>
+                  </div>
+                ))}
+              </aside>
+              <div className="image-frame">
+                {failedView === view && <p className="image-error" role="alert">This view could not load.</p>}
+                <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
+                {failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true"
+                  onPointerDown={event => {
+                    if (!event.isPrimary || event.button !== 0) return
+                    event.currentTarget.setPointerCapture(event.pointerId)
+                    const start = point(event)
+                    setDrawing({ id: crypto.randomUUID(), tool, start, end: start, note: '' })
+                  }}
+                  onPointerMove={event => {
+                    if (drawing && event.currentTarget.hasPointerCapture(event.pointerId)) {
+                      setDrawing({ ...drawing, end: point(event) })
+                    }
+                  }}
+                  onPointerUp={event => {
+                    if (!drawing || !event.currentTarget.hasPointerCapture(event.pointerId)) return
+                    const end = point(event)
+                    setDrawing(undefined)
+                    if (Math.hypot(end.x - drawing.start.x, end.y - drawing.start.y) < 6) return
+                    updateMarks(current => [...current, { ...drawing, end }])
+                    setSelected(drawing.id)
+                  }}
+                  onPointerCancel={() => setDrawing(undefined)}
+                  onLostPointerCapture={() => setDrawing(undefined)}>
+                  <defs>
+                    <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#68efcc" /></marker>
+                    <marker id="active-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffe291" /></marker>
+                  </defs>
+                  {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} />)}
+                  {drawing && <Shape mark={drawing} active />}
+                </svg>}
+              </div>
+            </div>
+          </div>
+          <div className="thumbs" aria-label="Study images">
+            {views.map((name, index) => (
+              <button key={name} aria-pressed={view === index} onClick={() => openView(index)} draggable
+                onDragStart={event => event.dataTransfer.setData('application/x-study-view', String(index))}>
+                <img src={source(index)} alt="" draggable={false} /><span>{name}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="panel report" aria-labelledby="report-title">
+          <div className="section-head"><h2 id="report-title">Report</h2></div>
+          <label htmlFor="report-text">Report text</label>
+          <textarea id="report-text" className="report-text" placeholder="Describe your findings and impression…" value={draft.report}
+            onChange={event => setDraft(current => ({ ...current, report: event.target.value }))} />
+          <div className="section-head key-heading"><h3>Key images</h3><span>{draft.keys.length} / {limit}</span></div>
+          <p id="key-help">{draft.keys.length >= limit ? 'Limit reached. Remove a key image to add another.' : 'Drag in a study image or use Add key image.'}</p>
+          {draft.keys.length > 1 && <p id="reorder-help">Drag to reorder, or Tab to a key image and press Shift + ← or Shift + →.</p>}
+          <ol className={`key-list ${dragOver ? 'drop-active' : ''}`}
+            onDragOver={event => {
+              if (!event.dataTransfer.types.includes('application/x-study-view')) return
+              event.preventDefault()
+              setDragOver(true)
+            }}
+            onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOver(false) }}
+            onDrop={event => {
+              event.preventDefault()
+              setDragOver(false)
+              const value = event.dataTransfer.getData('application/x-study-view')
+              if (value) addKey(Number(value))
+            }}>
+            {draft.keys.map((key, index) => (
+              <li key={key.id} tabIndex={0} ref={node => { if (node) cards.current.set(key.id, node); else cards.current.delete(key.id) }}
+                aria-label={`${views[key.view]}, key image ${index + 1}`} draggable
+                onDragStart={event => event.dataTransfer.setData('application/x-key-image', key.id)}
+                onDragOver={event => { if (event.dataTransfer.types.includes('application/x-key-image')) event.preventDefault() }}
+                onDrop={event => {
+                  const id = event.dataTransfer.getData('application/x-key-image')
+                  if (id) { event.preventDefault(); event.stopPropagation(); moveKey(id, index) }
+                }}
+                onKeyDown={event => {
+                  if (event.target !== event.currentTarget || !event.shiftKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
+                  event.preventDefault()
+                  moveKey(key.id, index + (event.key === 'ArrowLeft' ? -1 : 1), true)
+                }}>
+                <button className="key-preview" onClick={() => openView(key.view)} aria-label={`View ${views[key.view]}`}><img src={source(key.view)} alt="" draggable={false} /></button>
+                <div className="key-content">
+                  <strong>{index + 1}. {views[key.view]}</strong>
+                  <input aria-label={`Caption for key image ${index + 1}`} placeholder="Add a short caption…" maxLength={160} value={key.caption}
+                    onChange={event => setDraft(current => ({ ...current, keys: current.keys.map(item => item.id === key.id ? { ...item, caption: event.target.value } : item) }))} />
+                </div>
+                <button aria-label={`Remove key image ${index + 1}`} onClick={() => setDraft(current => ({ ...current, keys: current.keys.filter(item => item.id !== key.id) }))}>×</button>
+              </li>
+            ))}
+          </ol>
+          {draft.keys.length === 0 && <p className="empty">No key images yet.</p>}
+          <span className="sr-only" role="status">{announcement}</span>
+        </section>
+      </main>
+    </>
+  )
+}
