@@ -14,15 +14,14 @@ React, TypeScript, Vite, shadcn/ui, and TanStack Query on the front end. NestJS 
 
 **Questions I raised:** How does a reviewer find the study when they open the shared link? Does the URL need a study ID or a study list? Should reviewers see the report I worked on or start with a fresh one? Without a login, how can the app remember their work when they return?
 
-- The shared link opens the browser’s own study. NestJS issues a persistent, random UUID in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production). A new browser starts with an empty image panel and blank report. Returning with the same cookie restores that browser’s uploaded images and report. The root URL needs no study ID.
-- The empty image panel prompts the reviewer to upload mock JPEG or PNG images. The API verifies the decoded format, limits each source file to 10 MB, and resizes it into preview and thumbnail variants in object storage.
-- A small **Download sample images** button provides two simple PNG placeholders, one of a dog and one of a cat. Reviewers can upload them to try the full workflow. Each study starts empty, and the samples represent study images in the demo.
+- The shared link opens a study preloaded with mock images. NestJS issues a persistent UUID in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production). Each browser starts with a blank report and the same mock images. Returning with the same cookie restores that browser's report. The root URL needs no study ID.
+- The seed process accepts JPEG and PNG files up to 10 MB, verifies the decoded format, and generates preview and thumbnail variants. Locally, image files live on disk and report data lives in PostgreSQL.
 - Cap the report at 15 key images to keep it easy to scan. Show the count, explain the limit when reached, and let users edit or remove existing entries. PostgreSQL stores image references, so the cap controls report length.
 - Compute SHA-256 from the source bytes during ingestion. Entries with the same image checksum and different captions can coexist. On submission, the server merges entries with the same checksum and caption after trimming whitespace, keeping the first occurrence. Enforce the limit on the resulting list and return its canonical order.
-- `GET /api/study` returns uploaded images and the saved report. `POST /api/study/images` uploads an image. `PUT /api/study/report` saves the validated draft in one transaction. Every route resolves the study from the cookie. PostgreSQL stores one study per browser UUID, image checksums and object keys, one report per study, and key-image entries with an image reference, caption, and position. Derive contiguous positions after merging. Return `422` for an invalid caption, an image outside the study, or too many key images.
+- `GET /api/study` returns the preloaded images and the browser's saved report. `PUT /api/study/report` saves the validated draft in one transaction. PostgreSQL stores one shared study, image checksums and file keys, one report per study and browser UUID, and key-image entries with an image reference, caption, and position. Derive contiguous positions after merging. Return `422` for an invalid caption, an image outside the study, or too many key images.
 
 ## Scope and AI use
 
-The demo opens directly to the browser’s study and accepts mock images only. With another day, refine touch reordering and test the keyboard flow with users.
+The demo opens directly to a single mock study. With another day, refine touch reordering and test the keyboard flow with users.
 
 I used AI to compare deployment options and draft the API and data model. I rejected its initial suggestion to disallow duplicate image IDs because the same image can support distinct findings with different captions.
