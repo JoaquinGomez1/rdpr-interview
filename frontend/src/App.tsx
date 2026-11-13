@@ -23,16 +23,20 @@ function readDraft(): Draft {
   return { report: '', keys: [], marks: {} }
 }
 
-function Shape({ mark, active, drawing = false }: { mark: Mark; active: boolean; drawing?: boolean }) {
+function Shape({ mark, active, onEdit }: { mark: Mark; active: boolean; onEdit?: () => void }) {
   const { start, end, tool } = mark
+  const radius = Math.hypot(end.x - start.x, end.y - start.y)
   return (
-    <g stroke={active ? '#ffe291' : '#68efcc'} strokeWidth="2.5" fill="none">
+    <g stroke={active ? '#ffe291' : '#68efcc'} strokeWidth="2.5" fill="none" onDoubleClick={onEdit}>
+      {onEdit && (tool === 'arrow'
+        ? <line className="marker-hit" x1={start.x} y1={start.y} x2={end.x} y2={end.y} />
+        : <circle className="marker-hit" cx={start.x} cy={start.y} r={radius} />)}
       {tool === 'arrow'
         ? <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} markerEnd={active ? 'url(#active-tip)' : 'url(#tip)'} />
         : (
           <>
-            <circle cx={start.x} cy={start.y} r={Math.hypot(end.x - start.x, end.y - start.y)} />
-            {drawing && <circle cx={start.x} cy={start.y} r="3" fill="#ffe291" stroke="none" />}
+            <circle cx={start.x} cy={start.y} r={radius} />
+            {!onEdit && <circle cx={start.x} cy={start.y} r="3" fill="#ffe291" stroke="none" />}
           </>
         )}
     </g>
@@ -52,7 +56,8 @@ export default function App() {
   const cards = useRef(new Map<string, HTMLLIElement>())
   const focusAfterMove = useRef<string | null>(null)
   const marks = draft.marks[view] ?? []
-  const selectedMark = marks.find(mark => mark.id === selected)
+  const removalDialog = useRef<HTMLDialogElement>(null)
+  const [pendingRemoval, setPendingRemoval] = useState<Mark>()
 
   useEffect(() => {
     let failed = false
@@ -129,7 +134,7 @@ export default function App() {
               <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
               {failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true" className={tool ? "drawing-enabled" : undefined}
                 onPointerDown={event => {
-                  if (!tool || !event.isPrimary || event.button !== 0) return
+                  if (!tool || event.target !== event.currentTarget || !event.isPrimary || event.button !== 0) return
                   event.currentTarget.setPointerCapture(event.pointerId)
                   const start = point(event)
                   setDrawing({ id: crypto.randomUUID(), tool, start, end: start, note: '' })
@@ -153,8 +158,8 @@ export default function App() {
                   <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#68efcc" /></marker>
                   <marker id="active-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffe291" /></marker>
                 </defs>
-                {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} />)}
-                {drawing && <Shape mark={drawing} active drawing />}
+                {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} onEdit={() => setSelected(mark.id)} />)}
+                {drawing && <Shape mark={drawing} active />}
               </svg>}
               {failedView !== view && marks.map(mark => {
                 const { start, end } = mark
@@ -167,13 +172,36 @@ export default function App() {
                 const horizontal = Math.min(55, (distance + radius) / 6)
                 const shape = isCircle ? 'circle' : 'arrow'
                 return (
-                  <button key={mark.id} className="mark-label"
-                    aria-label={mark.note ? `Edit ${shape} note: ${mark.note}` : `Add ${shape} note`}
-                    aria-expanded={selected === mark.id}
-                    style={{ [side]: `calc(${horizontal}% + .35rem)`, [y <= 300 ? 'top' : 'bottom']: `${Math.min(y, 600 - y) / 6}%` }}
-                    onClick={() => setSelected(selected === mark.id ? undefined : mark.id)}>
-                    {mark.note || 'Add note'}
-                  </button>
+                  <div key={mark.id} className={selected === mark.id ? 'mark-label editing' : 'mark-label'}
+                    style={{ [side]: `calc(${horizontal}% + .35rem)`, [y <= 300 ? 'top' : 'bottom']: `${Math.min(y, 600 - y) / 6}%` }}>
+                    {selected === mark.id ? (
+                      <textarea autoFocus aria-label={`${shape} note`} value={mark.note} rows={2} maxLength={240} placeholder="Add a note…"
+                        onChange={event => {
+                          const note = event.target.value
+                          updateMarks(current => current.map(item => item.id === mark.id ? { ...item, note } : item))
+                        }}
+                        onBlur={() => setSelected(current => current === mark.id ? undefined : current)}
+                        onKeyDown={event => {
+                          if (event.nativeEvent.isComposing) return
+                          if (event.key === 'Escape' || (event.key === 'Enter' && !event.shiftKey)) {
+                            event.preventDefault()
+                            event.currentTarget.blur()
+                          }
+                        }} />
+                    ) : (
+                      <button className="mark-note" aria-label={`Edit ${shape} note`}
+                        onClick={event => { if (event.detail === 0) setSelected(mark.id) }}
+                        onDoubleClick={() => setSelected(mark.id)}>
+                        {mark.note || 'Add note'}
+                      </button>
+                    )}
+                    <button className="mark-remove" aria-label={`Remove ${shape} marker`}
+                      onMouseDown={event => { if (selected === mark.id) event.preventDefault() }}
+                      onClick={() => {
+                        setPendingRemoval(mark)
+                        removalDialog.current?.showModal()
+                      }}>×</button>
+                  </div>
                 )
               })}
             </div>
@@ -184,17 +212,20 @@ export default function App() {
               </div>
               <p>{tool === 'circle' ? 'Press at the center and drag outward.' : tool ? 'Drag on the image to draw.' : 'Select a tool to draw on the image.'}</p>
             </div>
-            {selectedMark && failedView !== view && (
-              <div className="annotation-editor">
-                <label htmlFor={selectedMark.id}>{selectedMark.tool === 'arrow' ? 'Arrow' : 'Circle'} note</label>
-                <textarea key={selectedMark.id} id={selectedMark.id} autoFocus value={selectedMark.note} rows={2} maxLength={240} placeholder="Add a note…"
-                  onChange={event => updateMarks(current => current.map(mark => mark.id === selectedMark.id ? { ...mark, note: event.target.value } : mark))} />
-                <button onClick={() => {
-                  updateMarks(current => current.filter(mark => mark.id !== selectedMark.id))
-                  setSelected(undefined)
-                }}>Remove mark</button>
-              </div>
-            )}
+            <dialog className="marker-dialog" ref={removalDialog} aria-labelledby="remove-marker-title"
+              onClose={() => setPendingRemoval(undefined)}>
+              <form method="dialog">
+                <h3 id="remove-marker-title">Remove {pendingRemoval?.tool} marker?</h3>
+                <p>This will remove the marker and its note.</p>
+                <div className="dialog-actions">
+                  <button autoFocus>Cancel</button>
+                  <button type="button" className="confirm-remove" onClick={() => {
+                    if (pendingRemoval) updateMarks(current => current.filter(mark => mark.id !== pendingRemoval.id))
+                    removalDialog.current?.close()
+                  }}>Remove</button>
+                </div>
+              </form>
+            </dialog>
           </div>
           <div className="thumbs" aria-label="Study images">
             {views.map((name, index) => (

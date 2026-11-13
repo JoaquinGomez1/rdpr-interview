@@ -13,31 +13,46 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .accent { background: #68efcc; color: #10251f; font-weight: 700; border-color: transparent; }
 .accent:hover { background: #95f7dd; }
 .viewer { border: 1px solid #30414e; border-radius: 10px; background: #080e13; overflow: hidden; }
-.view-title, .toolbar, .annotation-editor { padding: .55rem .75rem; background: #141e27; }
-.toolbar, .annotation-editor { flex-wrap: wrap; }
+.view-title, .toolbar { padding: .55rem .75rem; background: #141e27; }
+.toolbar { flex-wrap: wrap; }
 .annotation-tools { display: flex; gap: .35rem; }
 .toolbar p, .thumbs span, #key-help, #reorder-help { font-size: .82rem; }
-.annotation-editor { display: flex; align-items: center; gap: .5rem; border-top: 1px solid #30414e; }
-.annotation-editor textarea { flex: 1 1 12rem; min-width: 0; }
 .image-frame { position: relative; aspect-ratio: 1; }
 .image-frame img, .image-frame svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .image-frame img { object-fit: fill; }
 .image-frame svg { pointer-events: none; }
 .image-frame svg.drawing-enabled { pointer-events: auto; touch-action: none; cursor: crosshair; }
+.image-frame svg g { pointer-events: none; }
+.marker-hit { stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: text; touch-action: manipulation; }
 .mark-label {
   position: absolute;
-  max-width: 42%;
-  max-height: 45%;
-  overflow: auto;
-  overflow-wrap: anywhere;
-  border: 0;
-  padding: .05rem .2rem;
+  display: flex;
+  align-items: start;
+  max-width: min(calc(200px + 1.5rem), 42%);
   background: #080e13c9;
   color: #fff;
+  border-radius: 4px;
+}
+.mark-label.editing { width: min(calc(200px + 1.5rem), 42%); z-index: 1; }
+.mark-label textarea, .mark-note {
+  min-width: 0;
+  max-width: 200px;
+  padding: .15rem .25rem;
+  overflow-wrap: anywhere;
   text-align: left;
   white-space: pre-wrap;
 }
-.mark-label:hover, .mark-label[aria-expanded="true"] { background: #141e27; }
+.mark-label textarea { resize: none; }
+.mark-note, .mark-remove { border: 0; background: transparent; }
+.mark-note { cursor: text; }
+.mark-note:hover { background: transparent; }
+.mark-remove { flex: 0 0 1.5rem; padding: .15rem 0; opacity: .7; }
+.mark-remove:hover, .mark-remove:focus-visible { background: transparent; color: #ff9797; opacity: 1; }
+.marker-dialog { max-width: calc(100% - 2rem); padding: 1rem; color: inherit; background: #19232d; border: 1px solid #405766; border-radius: 10px; }
+.marker-dialog::backdrop { background: #080e13b3; }
+.marker-dialog p { margin-top: .35rem; }
+.dialog-actions { display: flex; justify-content: end; gap: .5rem; margin-top: 1rem; }
+.confirm-remove { color: #ffb0b0; }
 .image-error { position: relative; z-index: 2; padding: 2rem 1rem; }
 .thumbs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .45rem; margin-top: .75rem; }
 .thumbs button { min-width: 0; padding: .3rem; display: grid; gap: .2rem; }
