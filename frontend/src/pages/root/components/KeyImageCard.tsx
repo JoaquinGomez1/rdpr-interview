@@ -1,5 +1,5 @@
 import { useDrag } from "react-dnd";
-import { imageSource, keyImageType, views } from "../study";
+import { keyImageType, useStudyImage } from "../study";
 import type { KeyImage } from "../study";
 import { KeyImageCaption } from "./KeyImageCaption";
 
@@ -7,6 +7,7 @@ export function KeyImageCard({
   image,
   index,
   selected,
+  readOnly = false,
   insertionEdge,
   cardRef,
   onMove,
@@ -17,6 +18,7 @@ export function KeyImageCard({
   image: KeyImage;
   index: number;
   selected: boolean;
+  readOnly?: boolean;
   insertionEdge?: "before" | "after";
   cardRef: (node: HTMLLIElement | null) => void;
   onMove: (destination: number) => void;
@@ -31,13 +33,13 @@ export function KeyImageCard({
     collect: (monitor) => monitor.isDragging(),
   });
   const position = index + 1;
-  const viewName = views[view];
+  const { name: viewName, src } = useStudyImage(view);
 
   return (
     <li
-      tabIndex={0}
+      tabIndex={readOnly ? undefined : 0}
       ref={(node) => {
-        drag(node);
+        if (!readOnly) drag(node);
         cardRef(node);
       }}
       aria-label={`${viewName}, key image ${position}`}
@@ -45,7 +47,7 @@ export function KeyImageCard({
       data-insertion-edge={insertionEdge}
       onKeyDown={(event) => {
         if (
-          event.target !== event.currentTarget ||
+          readOnly || event.target !== event.currentTarget ||
           !event.shiftKey ||
           !["ArrowLeft", "ArrowRight"].includes(event.key)
         )
@@ -60,19 +62,19 @@ export function KeyImageCard({
         aria-pressed={selected}
         aria-label={`View key image ${position}, ${viewName}`}
       >
-        <img src={imageSource(view)} alt="" draggable={false} />
+        <img src={src} alt="" draggable={false} />
       </button>
       <div className="key-content">
         <strong>{position}. {viewName}</strong>
-        <KeyImageCaption
+        {readOnly ? (caption && <p className="key-caption">{caption}</p>) : <KeyImageCaption
           position={position}
           caption={caption}
           onChange={onCaptionChange}
-        />
+        />}
       </div>
-      <button aria-label={`Remove key image ${position}`} onClick={onRemove}>
+      {!readOnly && <button aria-label={`Remove key image ${position}`} onClick={onRemove}>
         ×
-      </button>
+      </button>}
     </li>
   );
 }

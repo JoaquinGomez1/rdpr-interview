@@ -6,6 +6,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { KeyImageList } from "../src/pages/root/components/KeyImageList";
 import type { KeyImageListProps } from "../src/pages/root/components/KeyImageList";
 import { StudyThumbnail } from "../src/pages/root/components/StudyThumbnail";
+import { StudyFixture } from "./studyFixture";
 
 const frontal = { id: "frontal", view: 0, caption: "" };
 const lateral = { id: "lateral", view: 1, caption: "" };
@@ -26,7 +27,7 @@ test("shows the key image preview and opens it with Enter", async () => {
   const user = userEvent.setup();
   const props = listProps();
   render(<KeyImageList {...props} activeKey={lateral.id} />, {
-    wrapper: ({ children }) => <DndProvider backend={TestBackend}>{children}</DndProvider>,
+    wrapper: ({ children }) => <StudyFixture><DndProvider backend={TestBackend}>{children}</DndProvider></StudyFixture>,
   });
 
   const preview = screen.getByRole("button", { name: "View key image 2, Lateral chest" });
@@ -41,7 +42,7 @@ test("requests keyboard reordering and focuses the moved card at its new positio
   const user = userEvent.setup();
   const props = listProps();
   const { rerender } = render(<KeyImageList {...props} />, {
-    wrapper: ({ children }) => <DndProvider backend={TestBackend}>{children}</DndProvider>,
+    wrapper: ({ children }) => <StudyFixture><DndProvider backend={TestBackend}>{children}</DndProvider></StudyFixture>,
   });
 
   await user.tab();
@@ -67,7 +68,7 @@ test("accepts a study thumbnail dropped into the key image list", () => {
     <DndProvider backend={backend}>
       <StudyThumbnail index={3} selected={false} onOpen={vi.fn()} />
       <KeyImageList {...props} keys={[]} />
-    </DndProvider>,
+    </DndProvider>, { wrapper: StudyFixture },
   );
   const thumbnail = screen.getByRole("button", { name: "Axial slice" });
   const list = screen.getByRole("list");
@@ -87,7 +88,7 @@ test("accepts a study thumbnail dropped into the key image list", () => {
 test("shows a drag insertion marker and requests the new order on drop", () => {
   const { backend, getInstance, handlerId } = createDragBackend();
   const props = listProps();
-  render(<DndProvider backend={backend}><KeyImageList {...props} /></DndProvider>);
+  render(<DndProvider backend={backend}><KeyImageList {...props} /></DndProvider>, { wrapper: StudyFixture });
   const list = screen.getByRole("list");
   const [first, second] = within(list).getAllByRole("listitem");
   const drag = getInstance();

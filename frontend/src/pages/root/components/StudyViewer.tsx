@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { imageSource, views } from "../study";
+import { useStudyImage } from "../study";
 import type { ImageSelection } from "../study";
 
 export function StudyViewer({
@@ -11,11 +11,12 @@ export function StudyViewer({
 }) {
   const [failedSelection, setFailedSelection] = useState<ImageSelection>();
   const { view } = selection;
+  const image = useStudyImage(view);
 
   return (
     <div className="viewer">
       <div className="view-title">
-        <strong>{views[view]}</strong>
+        <strong>{image.name}</strong>
         {keyPosition > 0 && <span> · Key image {keyPosition}</span>}
       </div>
       <div className="image-frame">
@@ -26,8 +27,8 @@ export function StudyViewer({
         )}
         <img
           key={view}
-          src={imageSource(view)}
-          alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`}
+          src={image.src}
+          alt={`AI-generated mock radiology image, ${image.name.toLowerCase()}`}
           onError={() => setFailedSelection(selection)}
         />
       </div>

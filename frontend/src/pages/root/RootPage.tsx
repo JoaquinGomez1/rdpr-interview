@@ -1,47 +1,115 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { ReportPanel } from "./components/ReportPanel";
 import { StudyPanel } from "./components/StudyPanel";
-import { keyImageLimit, keyImagePositions, views } from "./study";
+import { keyImageLimit, keyImagePositions, StudyImages } from "./study";
 import type { ImageSelection } from "./study";
 import { useReportDraft } from "./useReportDraft";
+import { loadReport, loadStudy, ReportApiError, saveReport } from "./reportApi";
+import type { Draft, SavedReport, Study } from "./reportApi";
+import type { StudyImage } from "./study";
 import "./RootPage.css";
 
-export default function RootPage() {
-  const { draft, setDraft, storageError } = useReportDraft();
-  const [selection, setSelection] = useState<ImageSelection>({ view: 0 });
+export default function RootPage({ reportId }: { reportId?: string }) {
+  const [result, setResult] = useState<Study | SavedReport>();
+  const [error, setError] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    const loading = reportId ? loadReport(reportId, controller.signal) : loadStudy(controller.signal);
+    loading.then(setResult, (error) => {
+      if (!controller.signal.aborted) {
+        setError(error instanceof ReportApiError ? error.message : "The reporting service could not be reached.");
+      }
+    });
+    return () => controller.abort();
+  }, [attempt, reportId]);
+
+  if (result && result.images.length) {
+    return (
+      <StudyImages.Provider value={result.images}>
+        {"draftId" in result ? <StudyEditor study={result} /> :
+          <ReportWorkspace draft={result} images={result.images} />}
+      </StudyImages.Provider>
+    );
+  }
+
+  return (
+    <main className="masthead">
+      <div>
+        <h1>Study reporting</h1>
+        {error ? (
+          <>
+            <p role="alert">{error}</p>
+            <button onClick={() => { setError(undefined); setAttempt(attempt + 1); }}>Retry</button>
+          </>
+        ) : <p role="status">{result ? "No study images available." : reportId ? "Loading report…" : "Loading study…"}</p>}
+        {reportId && <Link to="/">New report</Link>}
+      </div>
+    </main>
+  );
+}
+
+function StudyEditor({ study }: { study: Study }) {
+  const editor = useReportDraft(study);
+  return <ReportWorkspace draft={editor.draft} images={study.images} editor={editor} />;
+}
+
+function ReportWorkspace({ draft, images, editor }: {
+  draft: Draft;
+  images: StudyImage[];
+  editor?: ReturnType<typeof useReportDraft>;
+}) {
+  const navigate = useNavigate();
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [selection, setSelection] = useState<ImageSelection>({ view: images[0].view });
   const [announcement, setAnnouncement] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<ReportApiError>();
   const { keys, report } = draft;
+
+  async function submit() {
+    if (!editor || saving) return;
+    setSaving(true);
+    setSaveError(undefined);
+    try {
+      const saved = await saveReport(draft);
+      editor.clearDraft();
+      navigate(`/${saved.id}`, { replace: true });
+    } catch (error) {
+      setSaveError(error instanceof ReportApiError ? error : new ReportApiError("The report could not be submitted. Try again.", null));
+    } finally {
+      setSaving(false);
+    }
+  }
 
   function openView(view: number, keyId?: string) {
     setSelection({ view, keyId });
   }
 
   function addKey(view: number) {
-    if (
-      !Number.isInteger(view) ||
-      view < 0 ||
-      view >= views.length ||
-      keys.length >= keyImageLimit
-    )
-      return;
+    const image = images.find((image) => image.view === view);
+    if (!editor || saving || !image || keys.length >= keyImageLimit) return;
 
     const id = crypto.randomUUID();
     const positions = keyImagePositions(keys, view);
-    setDraft((current) => ({
+    editor.setDraft((current) => ({
       ...current,
       keys: [...current.keys, { id, view, caption: "" }],
     }));
     openView(view, id);
     setAnnouncement(
       positions.length
-        ? `${views[view]} added again. Already in the report as key image ${positions.join(", ")}.`
-        : `${views[view]} added to key images.`,
+        ? `${image.name} added again. Already in the report as key image ${positions.join(", ")}.`
+        : `${image.name} added to key images.`,
     );
   }
 
   function moveKey(id: string, destination: number) {
     const from = keys.findIndex((key) => key.id === id);
     if (
+      !editor || saving ||
       from < 0 ||
       destination < 0 ||
       destination >= keys.length ||
@@ -52,13 +120,13 @@ export default function RootPage() {
     const reordered = [...keys];
     const [entry] = reordered.splice(from, 1);
     reordered.splice(destination, 0, entry);
-    setDraft((current) => ({ ...current, keys: reordered }));
+    editor.setDraft((current) => ({ ...current, keys: reordered }));
     setAnnouncement(`Moved to position ${destination + 1} of ${keys.length}.`);
     return true;
   }
 
   function changeCaption(id: string, caption: string) {
-    setDraft((current) => ({
+    editor?.setDraft((current) => ({
       ...current,
       keys: current.keys.map((key) => (key.id === id ? { ...key, caption } : key)),
     }));
@@ -66,7 +134,7 @@ export default function RootPage() {
 
   function removeKey(id: string) {
     if (selection.keyId === id) openView(selection.view);
-    setDraft((current) => ({
+    editor?.setDraft((current) => ({
       ...current,
       keys: current.keys.filter((key) => key.id !== id),
     }));
@@ -80,22 +148,22 @@ export default function RootPage() {
           <h1>Study reporting</h1>
         </div>
         <span className="status" role="status">
-          {storageError
-            ? "Draft could not be saved locally"
-            : "Draft saved on this device"}
+          {editor ? (editor.dirty ? editor.storageError ? "Draft could not be saved locally" : "Draft saved on this device" : "") : "Saved report · Read-only"}
         </span>
       </header>
-      <main className="workspace">
+      <main className="workspace" data-read-only={!editor || undefined}>
         <StudyPanel
           selection={selection}
           keys={keys}
           onOpenView={openView}
           onAddKey={addKey}
+          saving={saving}
+          readOnly={!editor}
         />
         <ReportPanel
           report={report}
           onReportChange={(report) =>
-            setDraft((current) => ({ ...current, report }))
+            editor?.setDraft((current) => ({ ...current, report }))
           }
           keys={keys}
           activeKey={selection.keyId}
@@ -105,8 +173,26 @@ export default function RootPage() {
           onMoveKey={moveKey}
           onChangeCaption={changeCaption}
           onRemoveKey={removeKey}
+          submit={() => dialog.current?.showModal()}
+          saving={saving}
+          dirty={editor?.dirty ?? false}
+          readOnly={!editor}
+          saveError={saveError}
         />
       </main>
+      {editor && (
+        <dialog className="panel save-dialog" ref={dialog} aria-labelledby="save-title" aria-describedby="save-description">
+          <h2 id="save-title">Save report?</h2>
+          <p id="save-description">This report will be read-only after you save it.</p>
+          <form method="dialog" className="dialog-actions">
+            <button autoFocus>Cancel</button>
+            <button type="button" className="accent" onClick={() => {
+              dialog.current?.close();
+              void submit();
+            }}>Save report</button>
+          </form>
+        </dialog>
+      )}
     </>
   );
 }

@@ -8,6 +8,7 @@ type ImageDrag = { index: number } | { id: string };
 
 export type KeyImageListProps = {
   keys: KeyImage[];
+  readOnly?: boolean;
   activeKey?: string;
   announcement: string;
   onAddKey: (view: number) => void;
@@ -19,6 +20,7 @@ export type KeyImageListProps = {
 
 export function KeyImageList({
   keys,
+  readOnly = false,
   activeKey,
   announcement,
   onAddKey,
@@ -86,12 +88,12 @@ export function KeyImageList({
           {keys.length} / {keyImageLimit}
         </span>
       </div>
-      <p id="key-help">
+      {!readOnly && <p id="key-help">
         {keys.length >= keyImageLimit
           ? "Limit reached. Remove a key image to add another."
           : "Drag in a study image or use Add key image."}
-      </p>
-      {keys.length > 1 && (
+      </p>}
+      {!readOnly && keys.length > 1 && (
         <p id="reorder-help">
           Drag to reorder, or Tab to a key image and press Shift + ← or Shift +
           →.
@@ -100,7 +102,7 @@ export function KeyImageList({
       <ol
         ref={(node) => {
           list.current = node;
-          dropImages(node);
+          if (!readOnly) dropImages(node);
         }}
         className="key-list"
         data-drop-active={insertionIndex !== undefined || undefined}
@@ -116,6 +118,7 @@ export function KeyImageList({
               key={key.id}
               image={key}
               index={index}
+              readOnly={readOnly}
               selected={activeKey === key.id}
               insertionEdge={insertionEdge}
               cardRef={(node) => {

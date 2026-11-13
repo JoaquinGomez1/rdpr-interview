@@ -4,6 +4,9 @@ import { defineConfig } from 'vitest/config'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  server: {
+    proxy: { '/api': process.env.API_TARGET ?? 'http://127.0.0.1:3000' },
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],

@@ -1,32 +1,62 @@
 :root {
-  font: 15px/1.5 Inter, 'Segoe UI', sans-serif;
+  font:
+    15px/1.5 Inter,
+    "Segoe UI",
+    sans-serif;
   color: #e6eef3;
   background: #10171e;
   color-scheme: dark;
   font-synthesis: none;
 }
-* { box-sizing: border-box; }
-body { margin: 0; }
-h1, h2, h3, p { margin: 0; }
-button, input, textarea { font: inherit; }
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+button,
+input,
+textarea {
+  font: inherit;
+}
 button {
   color: inherit;
   background: #222f3a;
   border: 1px solid #354654;
   border-radius: 7px;
-  padding: .5rem .75rem;
+  padding: 0.5rem 0.75rem;
   cursor: pointer;
 }
-button:hover { background: #30424f; }
-button:disabled { opacity: .5; cursor: default; }
-button[aria-pressed="true"] { border-color: #68efcc; color: #a9ffe9; }
-:focus-visible { outline: 2px solid #68efcc; outline-offset: 3px; }
-input, textarea {
+button:hover {
+  background: #30424f;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+button[aria-pressed="true"] {
+  border-color: #68efcc;
+  color: #a9ffe9;
+}
+:focus-visible {
+  outline: 2px solid #68efcc;
+  outline-offset: 3px;
+}
+input,
+textarea {
   color: inherit;
   background: #101920;
   border: 1px solid #354654;
   border-radius: 7px;
-  padding: .65rem;
+  padding: 0.65rem;
   width: 100%;
 }
-textarea { resize: vertical; }
+textarea {
+  resize: vertical;
+}

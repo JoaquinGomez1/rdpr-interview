@@ -1,15 +1,18 @@
 import { useDrag } from "react-dnd";
-import { imageSource, studyImageType, views } from "../study";
+import { studyImageType, useStudyImage } from "../study";
 
 export function StudyThumbnail({
   index,
   selected,
   onOpen,
+  readOnly = false,
 }: {
   index: number;
   selected: boolean;
   onOpen: () => void;
+  readOnly?: boolean;
 }) {
+  const image = useStudyImage(index);
   const [dragging, drag] = useDrag({
     type: studyImageType,
     item: { index },
@@ -19,14 +22,14 @@ export function StudyThumbnail({
   return (
     <button
       ref={(node) => {
-        drag(node);
+        if (!readOnly) drag(node);
       }}
       data-dragging={dragging || undefined}
       aria-pressed={selected}
       onClick={onOpen}
     >
-      <img src={imageSource(index)} alt="" draggable={false} />
-      <span>{views[index]}</span>
+      <img src={image.src} alt="" draggable={false} />
+      <span>{image.name}</span>
     </button>
   );
 }

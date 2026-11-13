@@ -1,44 +1,57 @@
 import { useEffect, useState } from "react";
-import type { KeyImage } from "./study";
+import type { Draft, Study } from "./reportApi";
 
-type Draft = { report: string; keys: KeyImage[] };
+const legacyKeys = ["radpair-report-draft", "radpair-annotation-experiment"];
 
-const storageKey = "radpair-report-draft";
-const legacyStorageKey = "radpair-annotation-experiment";
-
-function readDraft(): Draft {
+function readDraft(storageKey: string, study: Study): Draft | null {
   try {
-    const saved =
-      localStorage.getItem(storageKey) ?? localStorage.getItem(legacyStorageKey);
-    if (saved) {
-      const { report, keys } = JSON.parse(saved) as Draft;
-      return {
-        report,
-        keys: keys.map(({ id, view, caption }) => ({ id, view, caption })),
-      };
-    }
+    const saved = localStorage.getItem(storageKey) ??
+      legacyKeys.map((key) => localStorage.getItem(key)).find(Boolean);
+    if (!saved) return null;
+    const { report, keys } = JSON.parse(saved) as Draft;
+    if (typeof report !== "string" || !Array.isArray(keys)) return null;
+    return {
+      report,
+      keys: keys.filter(({ view }) => study.images.some((image) => image.view === view))
+        .map(({ id, view, caption }) => ({ id, view, caption })),
+    };
   } catch {
-    // The editor still works when browser storage is unavailable.
+    return null;
   }
-  return { report: "", keys: [] };
 }
 
-export function useReportDraft() {
-  const [draft, setDraft] = useState(readDraft);
+const emptyDraft: Draft = { report: "", keys: [] };
+
+export function useReportDraft(study: Study) {
+  const storageKey = `radpair-report-draft:${study.draftId}`;
+  const [draft, setDraft] = useState(() => readDraft(storageKey, study) ?? emptyDraft);
   const [storageError, setStorageError] = useState(false);
+  const dirty = draft !== emptyDraft;
 
   useEffect(() => {
     let failed = false;
     try {
-      localStorage.setItem(storageKey, JSON.stringify(draft));
-      localStorage.removeItem(legacyStorageKey);
+      if (dirty) {
+        localStorage.setItem(storageKey, JSON.stringify(draft));
+        for (const key of legacyKeys) localStorage.removeItem(key);
+      } else {
+        localStorage.removeItem(storageKey);
+      }
     } catch {
       failed = true;
     }
-    // Report the result of writing to browser storage.
     // oxlint-disable-next-line react/set-state-in-effect
     setStorageError(failed);
-  }, [draft]);
+  }, [dirty, draft, storageKey]);
 
-  return { draft, setDraft, storageError };
+  function clearDraft() {
+    try {
+      localStorage.removeItem(storageKey);
+      for (const key of legacyKeys) localStorage.removeItem(key);
+    } catch {
+      // The report has already been saved to the server.
+    }
+  }
+
+  return { draft, setDraft, storageError, dirty, clearDraft };
 }

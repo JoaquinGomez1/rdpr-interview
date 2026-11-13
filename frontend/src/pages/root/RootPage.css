@@ -153,6 +153,38 @@ p,
 .report-text {
   min-height: 14rem;
 }
+.report-actions {
+  display: grid;
+  justify-items: start;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+.new-report {
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+}
+.save-dialog {
+  color: inherit;
+  max-width: min(26rem, calc(100% - 2rem));
+  margin: auto;
+}
+.save-dialog::backdrop {
+  background: rgb(0 0 0 / 65%);
+}
+.save-dialog p {
+  margin-block: 0.5rem 1rem;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+[data-read-only] .thumbs button,
+[data-read-only] .key-list li,
+[data-read-only] .key-caption {
+  cursor: default;
+}
 .key-heading {
   margin: 1rem 0 0.25rem;
 }

@@ -19,7 +19,6 @@ COPY --from=backend /build/package.json ./
 COPY --from=backend /build/node_modules ./node_modules
 COPY --from=backend /build/dist ./dist
 COPY --from=frontend /build/dist ./public
-RUN mkdir /app/images && chown node:node /app/images
 USER node
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
