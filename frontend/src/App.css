@@ -86,7 +86,8 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .key-list { list-style: none; margin: .7rem 0 0; padding: .45rem; border: 1px dashed #405766; border-radius: 8px; min-height: 3.2rem; display: grid; gap: .45rem; }
 .key-list:empty { min-height: 4rem; }
 .drop-active { border-color: #68efcc; background: #153730; }
-.key-list li { display: flex; gap: .6rem; align-items: center; background: #222f3a; padding: .4rem; border-radius: 6px; }
+.key-list li { display: flex; gap: .6rem; align-items: center; background: #222f3a; padding: .4rem; border-radius: 6px; cursor: grab; }
+.key-list li:active { cursor: grabbing; }
 .key-preview { width: 3.7rem; flex-shrink: 0; padding: .2rem; }
 .key-content { flex: 1; min-width: 0; }
 .key-content input { font-size: .88rem; margin-top: .25rem; }
