@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import type { MouseEvent } from 'react'
+import { useDrag, useDrop } from "react-dnd";
+import type { MouseEvent, ReactNode } from 'react'
 import './App.css'
 
 const views = ['Frontal chest', 'Lateral chest', 'Oblique chest', 'Axial slice', 'Coronal slice']
@@ -73,6 +74,56 @@ function Shape({ mark, active, onEdit }: { mark: ShapeMark; active: boolean; onE
   )
 }
 
+const studyImageType = "study-image";
+const keyImageType = "key-image";
+
+function StudyThumbnail({ index, selected, onOpen }: {
+  index: number;
+  selected: boolean;
+  onOpen: () => void;
+}) {
+  const [, drag] = useDrag({ type: studyImageType, item: { index } });
+  return (
+    <button ref={(node) => { drag(node); }} aria-pressed={selected} onClick={onOpen}>
+      <img src={source(index)} alt="" draggable={false} />
+      <span>{views[index]}</span>
+    </button>
+  );
+}
+
+function KeyImageCard({ id, index, label, cardRef, onMove, children }: {
+  id: string;
+  index: number;
+  label: string;
+  cardRef: (node: HTMLLIElement | null) => void;
+  onMove: (id: string, destination: number, focus?: boolean) => void;
+  children: ReactNode;
+}) {
+  const [, drag] = useDrag({ type: keyImageType, item: { id } });
+  const [, drop] = useDrop<{ id: string }>({
+    accept: keyImageType,
+    drop: (item) => { onMove(item.id, index); },
+  });
+  return (
+    <li
+      tabIndex={0}
+      ref={(node) => { drag(drop(node)); cardRef(node); }}
+      aria-label={label}
+      onKeyDown={(event) => {
+        if (
+          event.target !== event.currentTarget ||
+          !event.shiftKey ||
+          !["ArrowLeft", "ArrowRight"].includes(event.key)
+        ) return;
+        event.preventDefault();
+        onMove(id, index + (event.key === "ArrowLeft" ? -1 : 1), true);
+      }}
+    >
+      {children}
+    </li>
+  );
+}
+
 export default function App() {
   const [draft, setDraft] = useState(readDraft)
   const [view, setView] = useState(0)
@@ -84,7 +135,6 @@ export default function App() {
   const [announcement, setAnnouncement] = useState('')
   const [storageError, setStorageError] = useState(false)
   const [failedView, setFailedView] = useState<number>()
-  const [dragOver, setDragOver] = useState(false)
   const cards = useRef(new Map<string, HTMLLIElement>())
   const focusAfterMove = useRef<string | null>(null)
   const keyEntry = draft.keys.find(key => key.id === activeKey)
@@ -160,6 +210,13 @@ export default function App() {
     setDraft(current => ({ ...current, keys }))
     setAnnouncement(`Moved to position ${destination + 1} of ${keys.length}.`)
   }
+
+  const [{ dragOver }, dropStudyImage] = useDrop<{ index: number }, void, { dragOver: boolean }>({
+    accept: studyImageType,
+    canDrop: () => draft.keys.length < limit,
+    drop: ({ index }) => { addKey(index); },
+    collect: (monitor) => ({ dragOver: monitor.isOver() && monitor.canDrop() }),
+  });
 
   return (
     <>
@@ -297,10 +354,7 @@ export default function App() {
           </div>
           <div className="thumbs" aria-label="Study images">
             {views.map((name, index) => (
-              <button key={name} aria-pressed={view === index} onClick={() => openView(index)} draggable
-                onDragStart={event => event.dataTransfer.setData('application/x-study-view', String(index))}>
-                <img src={source(index)} alt="" draggable={false} /><span>{name}</span>
-              </button>
+              <StudyThumbnail key={name} index={index} selected={view === index} onOpen={() => openView(index)} />
             ))}
           </div>
           <div className="study-actions">
@@ -321,33 +375,20 @@ export default function App() {
           <div className="section-head key-heading"><h3>Key images</h3><span>{draft.keys.length} / {limit}</span></div>
           <p id="key-help">{draft.keys.length >= limit ? 'Limit reached. Remove a key image to add another.' : 'Drag in a study image or use Add key image.'}</p>
           {draft.keys.length > 1 && <p id="reorder-help">Drag to reorder, or Tab to a key image and press Shift + ← or Shift + →.</p>}
-          <ol className={`key-list ${dragOver ? 'drop-active' : ''}`}
-            onDragOver={event => {
-              if (!event.dataTransfer.types.includes('application/x-study-view')) return
-              event.preventDefault()
-              setDragOver(true)
-            }}
-            onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragOver(false) }}
-            onDrop={event => {
-              event.preventDefault()
-              setDragOver(false)
-              const value = event.dataTransfer.getData('application/x-study-view')
-              if (value) addKey(Number(value))
-            }}>
+          <ol ref={(node) => { dropStudyImage(node); }}
+            className={`key-list ${dragOver ? "drop-active" : ""}`}>
             {draft.keys.map((key, index) => (
-              <li key={key.id} tabIndex={0} ref={node => { if (node) cards.current.set(key.id, node); else cards.current.delete(key.id) }}
-                aria-label={`${views[key.view]}, key image ${index + 1}`} draggable
-                onDragStart={event => event.dataTransfer.setData('application/x-key-image', key.id)}
-                onDragOver={event => { if (event.dataTransfer.types.includes('application/x-key-image')) event.preventDefault() }}
-                onDrop={event => {
-                  const id = event.dataTransfer.getData('application/x-key-image')
-                  if (id) { event.preventDefault(); event.stopPropagation(); moveKey(id, index) }
+              <KeyImageCard
+                key={key.id}
+                id={key.id}
+                index={index}
+                label={`${views[key.view]}, key image ${index + 1}`}
+                onMove={moveKey}
+                cardRef={(node) => {
+                  if (node) cards.current.set(key.id, node);
+                  else cards.current.delete(key.id);
                 }}
-                onKeyDown={event => {
-                  if (event.target !== event.currentTarget || !event.shiftKey || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return
-                  event.preventDefault()
-                  moveKey(key.id, index + (event.key === 'ArrowLeft' ? -1 : 1), true)
-                }}>
+              >
                 <button className="key-preview" onClick={() => openView(key.view, key.id)}
                   aria-pressed={activeKey === key.id} aria-label={`View key image ${index + 1}, ${views[key.view]}`}><img src={source(key.view)} alt="" draggable={false} /></button>
                 <div className="key-content">
@@ -373,7 +414,7 @@ export default function App() {
                   if (activeKey === key.id) openView(key.view)
                   setDraft(current => ({ ...current, keys: current.keys.filter(item => item.id !== key.id) }))
                 }}>×</button>
-              </li>
+              </KeyImageCard>
             ))}
           </ol>
           {draft.keys.length === 0 && <p className="empty">No key images yet.</p>}
