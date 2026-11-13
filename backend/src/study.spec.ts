@@ -12,16 +12,31 @@ function key(view: number, caption = '') {
 
 describe('report validation', () => {
   it('keeps the first matching caption and preserves order, distinct captions and blank captions', () => {
-    const keys = [key(0, 'Finding'), key(1, 'Finding'), key(0), key(0, 'Other'), key(0)];
+    const keys = [
+      key(0, 'Finding'),
+      key(1, 'Finding'),
+      key(0),
+      key(0, 'Other'),
+      key(0),
+    ];
     expect(validateReport({ report: 'Findings', keys }, images).keys).toEqual([
-      keys[0], keys[2], keys[3], keys[4],
+      keys[0],
+      keys[2],
+      keys[3],
+      keys[4],
     ]);
   });
 
   it('applies the limit after merging', () => {
     const keys = Array.from({ length: 16 }, () => key(0, 'Same finding'));
-    expect(validateReport({ report: '', keys }, images).keys).toEqual([keys[0]]);
-    expect(() => validateReport({ report: '', keys: keys.map((entry) => ({ ...entry, caption: '' })) }, images))
-      .toThrow('up to 15 key images');
+    expect(validateReport({ report: '', keys }, images).keys).toEqual([
+      keys[0],
+    ]);
+    expect(() =>
+      validateReport(
+        { report: '', keys: keys.map((entry) => ({ ...entry, caption: '' })) },
+        images,
+      ),
+    ).toThrow('up to 15 key images');
   });
 });

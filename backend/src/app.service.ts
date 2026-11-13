@@ -44,13 +44,16 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
         UNIQUE (report_id, id)
       );
     `);
-    await this.db.query(`
+    await this.db.query(
+      `
       INSERT INTO study_images (view, name, src, checksum)
       SELECT view, name, src, checksum
       FROM jsonb_to_recordset($1::jsonb) AS image(view integer, name text, src text, checksum text)
       ON CONFLICT (view) DO UPDATE
       SET name = EXCLUDED.name, src = EXCLUDED.src, checksum = EXCLUDED.checksum
-    `, [JSON.stringify(this.images)]);
+    `,
+      [JSON.stringify(this.images)],
+    );
   }
 
   async onModuleDestroy() {
@@ -62,13 +65,16 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   }
 
   async load(reportId: string) {
-    const { rows } = await this.db.query<Report>(`
+    const { rows } = await this.db.query<Report>(
+      `
       SELECT report, COALESCE((
         SELECT jsonb_agg(jsonb_build_object('id', id, 'view', view, 'caption', caption) ORDER BY position)
         FROM report_key_images WHERE report_id = $1
       ), '[]'::jsonb) AS keys
       FROM reports WHERE id = $1
-    `, [reportId]);
+    `,
+      [reportId],
+    );
     return rows[0] ?? null;
   }
 
@@ -77,14 +83,25 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO reports (id, report) VALUES ($1, $2)
-      `, [reportId, report.report]);
-      await client.query(`
+      `,
+        [reportId, report.report],
+      );
+      await client.query(
+        `
         INSERT INTO report_key_images (report_id, id, view, caption, position)
         SELECT $1, id, view, caption, position
         FROM jsonb_to_recordset($2::jsonb) AS key_image(id uuid, view integer, caption text, position integer)
-      `, [reportId, JSON.stringify(report.keys.map((key, index) => ({ ...key, position: index + 1 })))]);
+      `,
+        [
+          reportId,
+          JSON.stringify(
+            report.keys.map((key, index) => ({ ...key, position: index + 1 })),
+          ),
+        ],
+      );
       await client.query('COMMIT');
       return report;
     } catch (error) {

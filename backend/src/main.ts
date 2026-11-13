@@ -12,18 +12,26 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
   const logger = new Logger('HTTP');
-  app.use('/api', (request: Request, response: Response, next: NextFunction) => {
-    const id = randomUUID();
-    response.setHeader('X-Request-Id', id);
-    response.on('finish', () => {
-      logger.log(`${id} ${request.method} ${request.path} ${response.statusCode}`);
-    });
-    next();
-  });
+  app.use(
+    '/api',
+    (request: Request, response: Response, next: NextFunction) => {
+      const id = randomUUID();
+      response.setHeader('X-Request-Id', id);
+      response.on('finish', () => {
+        logger.log(
+          `${id} ${request.method} ${request.path} ${response.statusCode}`,
+        );
+      });
+      next();
+    },
+  );
   if (process.env.FRONTEND_DIR) {
     app.useStaticAssets(publicDir);
     app.use((request: Request, response: Response, next: NextFunction) => {
-      if (request.method === 'GET' && uuidPattern.test(request.path.slice(1).replace(/\/$/, ''))) {
+      if (
+        request.method === 'GET' &&
+        uuidPattern.test(request.path.slice(1).replace(/\/$/, ''))
+      ) {
         response.sendFile(resolve(publicDir, 'index.html'));
         return;
       }
