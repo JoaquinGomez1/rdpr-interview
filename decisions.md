@@ -21,16 +21,11 @@ React, TypeScript, Vite, shadcn/ui, and TanStack Query on the front end. NestJS 
 - Exact-text merging is planned for the API on submission. Use the SHA-256 checksum computed during image ingestion to identify matching images. When the captions match exactly and contain text, keep the first entry in report order. Enforce the limit on the resulting list and return its canonical order.
 - `GET /api/study` returns the preloaded images and the browser's saved report. `PUT /api/study/report` saves the validated draft in one transaction. PostgreSQL stores one shared study, image checksums and file keys, one report per study and browser UUID, and key-image entries with an image reference, caption, and position. Derive contiguous positions after merging. Return `422` for an invalid caption, an image outside the study, or too many key images.
 
-## Browser tests
+## Tests
 
-The Playwright tests cover the path from reviewing a study to choosing and ordering the images that accompany the report.
+Use Vitest and React Testing Library for frontend component and hook unit tests. They cover study image selection, image load errors, adding key images, keyboard and drag reordering, and restoring the ordered draft from browser storage. Run `npm test` from `frontend` or use `npm run test:watch` while editing.
 
-- **Select a study thumbnail.** The test checks that the selected thumbnail opens the matching image and that the image loads. Radiologists need to inspect the intended view before choosing it to illustrate a finding.
-- **Add a key image with the button.** The test checks that **Add key image** puts the currently selected image and its preview in the report. This gives radiologists a direct way to attach evidence to their findings.
-- **Add and reorder key images by dragging.** The test drags study thumbnails into the report, checks the insertion marker during a drag, and verifies that dropping changes the order and that the draft retains it after reload. Radiologists can arrange evidence in the order the referring doctor should see it.
-- **Select and reorder a key image with the keyboard.** The test opens a key image with Enter, moves it with Shift+Right, and checks that focus follows the moved image and its new position is announced. This lets users review and organize evidence without a mouse.
-
-Run the tests from `frontend` with `npx playwright install chromium` followed by `npm test`. Set `PLAYWRIGHT_CHANNEL=chrome` to use an installed Chrome browser.
+Add one integration test once the reporting API is implemented.
 
 ## Scope and AI use
 

@@ -1,0 +1,52 @@
+import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { DndProvider } from "react-dnd";
+import { TestBackend } from "react-dnd-test-backend";
+import { expect, test, vi } from "vitest";
+import { StudyPanel } from "../src/pages/root/components/StudyPanel";
+
+test("requests the selected study view and displays its larger image", async () => {
+  const user = userEvent.setup();
+  const onOpenView = vi.fn();
+  const props = { keys: [], onOpenView, onAddKey: vi.fn() };
+  const { rerender } = render(<StudyPanel {...props} selection={{ view: 0 }} />, {
+    wrapper: ({ children }) => <DndProvider backend={TestBackend}>{children}</DndProvider>,
+  });
+
+  const axialThumbnail = screen.getByRole("button", { name: "Axial slice" });
+  await user.click(axialThumbnail);
+  expect(onOpenView).toHaveBeenCalledOnce();
+  expect(onOpenView).toHaveBeenCalledWith(3);
+
+  rerender(<StudyPanel {...props} selection={{ view: 3 }} />);
+  expect(axialThumbnail).toBePressed();
+  expect(screen.getByRole("button", { name: "Frontal chest" })).not.toBePressed();
+  expect(screen.getByRole("img", { name: /axial slice/i })).toHaveAttribute(
+    "src", "/study/view-4.png",
+  );
+});
+
+test("requests adding the current study view as a key image", async () => {
+  const user = userEvent.setup();
+  const onAddKey = vi.fn();
+  render(
+    <DndProvider backend={TestBackend}>
+      <StudyPanel selection={{ view: 4 }} keys={[]} onOpenView={vi.fn()} onAddKey={onAddKey} />
+    </DndProvider>,
+  );
+
+  await user.click(screen.getByRole("button", { name: /add key image/i }));
+  expect(onAddKey).toHaveBeenCalledOnce();
+  expect(onAddKey).toHaveBeenCalledWith(4);
+});
+
+test("shows an error when the selected image fails to load", () => {
+  render(
+    <DndProvider backend={TestBackend}>
+      <StudyPanel selection={{ view: 0 }} keys={[]} onOpenView={vi.fn()} onAddKey={vi.fn()} />
+    </DndProvider>,
+  );
+
+  fireEvent.error(screen.getByRole("img", { name: /frontal chest/i }));
+  expect(screen.getByRole("alert")).toHaveTextContent("This view could not load.");
+});
