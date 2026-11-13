@@ -11,17 +11,22 @@ type Point = { x: number; y: number }
 type Tool = 'arrow' | 'circle'
 type ShapeMark = { id: string; tool: Tool; start: Point; end: Point; note?: string }
 type Mark = ShapeMark | { id: string; tool: 'text'; start: Point; note: string }
-type KeyImage = { id: string; view: number; caption: string }
+type KeyImage = { id: string; view: number; caption: string; marks?: Mark[] }
 type Draft = { report: string; keys: KeyImage[]; marks: Record<number, Mark[]> }
 
-function withoutEmptyNotes(draft: Draft): Draft {
-  const marks = Object.fromEntries(Object.entries(draft.marks).map(([view, items]) => [view, items.flatMap((mark): Mark[] => {
+function cleanMarks(items: Mark[]): Mark[] {
+  return items.flatMap((mark): Mark[] => {
     if (mark.note?.trim()) return [mark]
     if (mark.tool === 'text') return []
     const { note: _note, ...shape } = mark
     return [shape]
-  })]))
-  return { ...draft, marks }
+  })
+}
+
+function withoutEmptyNotes(draft: Draft): Draft {
+  const marks = Object.fromEntries(Object.entries(draft.marks).map(([view, items]) => [view, cleanMarks(items)]))
+  const keys = draft.keys.map(key => ({ ...key, marks: cleanMarks(key.marks ?? []) }))
+  return { ...draft, keys, marks }
 }
 
 function readDraft(): Draft {
@@ -57,6 +62,7 @@ function Shape({ mark, active, onEdit }: { mark: ShapeMark; active: boolean; onE
 export default function App() {
   const [draft, setDraft] = useState(readDraft)
   const [view, setView] = useState(0)
+  const [activeKey, setActiveKey] = useState<string>()
   const [tool, setTool] = useState<Tool>()
   const [selected, setSelected] = useState<string>()
   const [drawing, setDrawing] = useState<ShapeMark>()
@@ -66,7 +72,12 @@ export default function App() {
   const [dragOver, setDragOver] = useState(false)
   const cards = useRef(new Map<string, HTMLLIElement>())
   const focusAfterMove = useRef<string | null>(null)
-  const marks = draft.marks[view] ?? []
+  const keyEntry = draft.keys.find(key => key.id === activeKey)
+  const marks = (keyEntry ? keyEntry.marks : draft.marks[view]) ?? []
+  const existingPositions = draft.keys.flatMap((key, index) => key.view === view ? [index + 1] : [])
+  const duplicateHint = existingPositions.length > 0
+    ? `Already in the report as key image ${existingPositions.join(', ')}.`
+    : ''
   const removalDialog = useRef<HTMLDialogElement>(null)
   const [pendingRemoval, setPendingRemoval] = useState<Mark>()
 
@@ -87,15 +98,18 @@ export default function App() {
     focusAfterMove.current = null
   }, [draft.keys])
 
-  function openView(index: number) {
+  function openView(index: number, keyId?: string) {
     setView(index)
+    setActiveKey(keyId)
     setSelected(undefined)
     setDrawing(undefined)
     setFailedView(undefined)
   }
 
   function updateMarks(update: (current: Mark[]) => Mark[]) {
-    setDraft(current => ({ ...current, marks: { ...current.marks, [view]: update(current.marks[view] ?? []) } }))
+    setDraft(current => activeKey
+      ? { ...current, keys: current.keys.map(key => key.id === activeKey ? { ...key, marks: update(key.marks ?? []) } : key) }
+      : { ...current, marks: { ...current.marks, [view]: update(current.marks[view] ?? []) } })
   }
 
   function point(event: MouseEvent<SVGSVGElement>, allowOutside = false): Point {
@@ -110,8 +124,12 @@ export default function App() {
   function addKey(index: number) {
     if (!Number.isInteger(index) || index < 0 || index >= views.length || draft.keys.length >= limit) return
     const id = crypto.randomUUID()
-    setDraft(current => ({ ...current, keys: [...current.keys, { id, view: index, caption: '' }] }))
-    setAnnouncement(`${views[index]} added to key images.`)
+    const positions = draft.keys.flatMap((key, position) => key.view === index ? [position + 1] : [])
+    setDraft(current => ({ ...current, keys: [...current.keys, { id, view: index, caption: '', marks: [] }] }))
+    openView(index, id)
+    setAnnouncement(positions.length
+      ? `${views[index]} added again. Already in the report as key image ${positions.join(', ')}.`
+      : `${views[index]} added to key images.`)
   }
 
   function moveKey(id: string, destination: number, focus = false) {
@@ -136,10 +154,17 @@ export default function App() {
         <section className="study panel" aria-labelledby="study-title">
           <div className="section-head">
             <div><h2 id="study-title">Chest study</h2><p>5 synthetic views</p></div>
-            <button className="accent" disabled={draft.keys.length >= limit} onClick={() => addKey(view)}>+ Add key image</button>
+            <div className="add-key">
+              <button className="accent" disabled={draft.keys.length >= limit}
+                aria-describedby={duplicateHint ? 'duplicate-key-hint' : undefined}
+                onClick={() => addKey(view)}>+ Add key image</button>
+              {duplicateHint && <span id="duplicate-key-hint" role="tooltip">{duplicateHint}</span>}
+            </div>
           </div>
           <div className="viewer">
-            <div className="view-title"><strong>{views[view]}</strong></div>
+            <div className="view-title"><strong>{views[view]}</strong>
+              {keyEntry && <span> · Key image {draft.keys.indexOf(keyEntry) + 1}</span>}
+            </div>
             <div className="image-frame">
               {failedView === view && <p className="image-error" role="alert">This view could not load.</p>}
               <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
@@ -297,13 +322,17 @@ export default function App() {
                   event.preventDefault()
                   moveKey(key.id, index + (event.key === 'ArrowLeft' ? -1 : 1), true)
                 }}>
-                <button className="key-preview" onClick={() => openView(key.view)} aria-label={`View ${views[key.view]}`}><img src={source(key.view)} alt="" draggable={false} /></button>
+                <button className="key-preview" onClick={() => openView(key.view, key.id)}
+                  aria-pressed={activeKey === key.id} aria-label={`View key image ${index + 1}, ${views[key.view]}`}><img src={source(key.view)} alt="" draggable={false} /></button>
                 <div className="key-content">
                   <strong>{index + 1}. {views[key.view]}</strong>
                   <input aria-label={`Caption for key image ${index + 1}`} placeholder="Add a short caption…" maxLength={160} value={key.caption}
                     onChange={event => setDraft(current => ({ ...current, keys: current.keys.map(item => item.id === key.id ? { ...item, caption: event.target.value } : item) }))} />
                 </div>
-                <button aria-label={`Remove key image ${index + 1}`} onClick={() => setDraft(current => ({ ...current, keys: current.keys.filter(item => item.id !== key.id) }))}>×</button>
+                <button aria-label={`Remove key image ${index + 1}`} onClick={() => {
+                  if (activeKey === key.id) openView(key.view)
+                  setDraft(current => ({ ...current, keys: current.keys.filter(item => item.id !== key.id) }))
+                }}>×</button>
               </li>
             ))}
           </ol>

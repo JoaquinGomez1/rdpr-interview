@@ -12,6 +12,23 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .section-head { margin-bottom: 1rem; }
 .accent { background: #68efcc; color: #10251f; font-weight: 700; border-color: transparent; }
 .accent:hover { background: #95f7dd; }
+.add-key { position: relative; }
+.add-key [role="tooltip"] {
+  position: absolute;
+  z-index: 3;
+  right: 0;
+  top: 100%;
+  width: max-content;
+  max-width: min(15rem, 65vw);
+  padding: .35rem .55rem;
+  border: 1px solid #405766;
+  border-radius: 6px;
+  background: #141e27;
+  font-size: .78rem;
+  opacity: 0;
+  pointer-events: none;
+}
+.add-key:hover [role="tooltip"], .add-key:focus-within [role="tooltip"] { opacity: 1; }
 .viewer { border: 1px solid #30414e; border-radius: 10px; background: #080e13; overflow: hidden; }
 .view-title, .toolbar { padding: .55rem .75rem; background: #141e27; }
 .toolbar { flex-wrap: wrap; }
