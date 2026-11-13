@@ -9,15 +9,25 @@ const source = (view: number) => `${import.meta.env.BASE_URL}study/view-${view +
 
 type Point = { x: number; y: number }
 type Tool = 'arrow' | 'circle'
-type ShapeMark = { id: string; tool: Tool; start: Point; end: Point; note: string }
+type ShapeMark = { id: string; tool: Tool; start: Point; end: Point; note?: string }
 type Mark = ShapeMark | { id: string; tool: 'text'; start: Point; note: string }
 type KeyImage = { id: string; view: number; caption: string }
 type Draft = { report: string; keys: KeyImage[]; marks: Record<number, Mark[]> }
 
+function withoutEmptyNotes(draft: Draft): Draft {
+  const marks = Object.fromEntries(Object.entries(draft.marks).map(([view, items]) => [view, items.flatMap((mark): Mark[] => {
+    if (mark.note?.trim()) return [mark]
+    if (mark.tool === 'text') return []
+    const { note: _note, ...shape } = mark
+    return [shape]
+  })]))
+  return { ...draft, marks }
+}
+
 function readDraft(): Draft {
   try {
     const saved = localStorage.getItem(storageKey)
-    if (saved) return JSON.parse(saved) as Draft
+    if (saved) return withoutEmptyNotes(JSON.parse(saved) as Draft)
   } catch {
     // The editor still works when browser storage is unavailable.
   }
@@ -63,7 +73,7 @@ export default function App() {
   useEffect(() => {
     let failed = false
     try {
-      localStorage.setItem(storageKey, JSON.stringify(draft))
+      localStorage.setItem(storageKey, JSON.stringify(withoutEmptyNotes(draft)))
     } catch {
       failed = true
     }
@@ -171,6 +181,8 @@ export default function App() {
               </svg>}
               {failedView !== view && marks.map(mark => {
                 const { start, tool: shape } = mark
+                const hasNote = Boolean(mark.note?.trim())
+                if (shape === 'text' && !hasNote && selected !== mark.id) return null
                 const x = mark.tool === 'arrow' ? (start.x + mark.end.x) / 2 : start.x
                 const y = mark.tool === 'arrow' ? (start.y + mark.end.y) / 2 : start.y
                 const radius = mark.tool === 'circle' ? Math.hypot(mark.end.x - start.x, mark.end.y - start.y) : 0
@@ -182,13 +194,13 @@ export default function App() {
                   <div key={mark.id} className={selected === mark.id ? 'mark-label editing' : 'mark-label'}
                     style={{ [side]: `calc(${horizontal}% + .35rem)`, [y <= 300 ? 'top' : 'bottom']: `${Math.min(y, 600 - y) / 6}%` }}>
                     {selected === mark.id ? (
-                      <textarea autoFocus aria-label={`${shape} note`} value={mark.note} rows={1} maxLength={240} placeholder="Add note…"
+                      <textarea autoFocus aria-label={`${shape} note`} value={mark.note ?? ''} rows={1} maxLength={240} placeholder="Add note…"
                         onChange={event => {
                           const note = event.target.value
                           updateMarks(current => current.map(item => item.id === mark.id ? { ...item, note } : item))
                         }}
                         onBlur={() => {
-                          if (shape === 'text' && !mark.note.trim()) {
+                          if (shape === 'text' && !hasNote) {
                             updateMarks(current => current.filter(item => item.id !== mark.id))
                           }
                           setSelected(current => current === mark.id ? undefined : current)
@@ -202,12 +214,13 @@ export default function App() {
                         }} />
                     ) : (
                       <button className="mark-note" aria-label={`Edit ${shape} note`}
-                        onClick={event => { if (event.detail === 0) setSelected(mark.id) }}
+                        title={hasNote ? undefined : 'Add note'}
+                        onClick={event => { if (!hasNote || event.detail === 0) setSelected(mark.id) }}
                         onDoubleClick={() => setSelected(mark.id)}>
-                        {mark.note || 'Add note'}
+                        {hasNote ? mark.note : '✎'}
                       </button>
                     )}
-                    {(shape !== 'text' || mark.note.trim()) && <button className="mark-remove" aria-label={`Remove ${markerName}`}
+                    {(shape !== 'text' || hasNote) && <button className="mark-remove" aria-label={`Remove ${markerName}`}
                       onMouseDown={event => { if (selected === mark.id) event.preventDefault() }}
                       onClick={() => {
                         setPendingRemoval(mark)
