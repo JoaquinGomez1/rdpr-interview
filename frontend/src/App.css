@@ -20,8 +20,8 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .image-frame { position: relative; aspect-ratio: 1; }
 .image-frame img, .image-frame svg { position: absolute; inset: 0; width: 100%; height: 100%; }
 .image-frame img { object-fit: fill; }
-.image-frame svg { pointer-events: none; }
-.image-frame svg.drawing-enabled { pointer-events: auto; touch-action: none; cursor: crosshair; }
+.image-frame svg { cursor: text; }
+.image-frame svg.drawing-enabled { touch-action: none; cursor: crosshair; }
 .image-frame svg g { pointer-events: none; }
 .marker-hit { stroke: transparent; stroke-width: 14; pointer-events: stroke; cursor: text; touch-action: manipulation; }
 .mark-label {

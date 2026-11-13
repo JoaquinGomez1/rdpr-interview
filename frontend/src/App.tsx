@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { PointerEvent } from 'react'
+import type { MouseEvent } from 'react'
 import './App.css'
 
 const views = ['Frontal chest', 'Lateral chest', 'Oblique chest', 'Axial slice', 'Coronal slice']
@@ -9,7 +9,8 @@ const source = (view: number) => `${import.meta.env.BASE_URL}study/view-${view +
 
 type Point = { x: number; y: number }
 type Tool = 'arrow' | 'circle'
-type Mark = { id: string; tool: Tool; start: Point; end: Point; note: string }
+type ShapeMark = { id: string; tool: Tool; start: Point; end: Point; note: string }
+type Mark = ShapeMark | { id: string; tool: 'text'; start: Point; note: string }
 type KeyImage = { id: string; view: number; caption: string }
 type Draft = { report: string; keys: KeyImage[]; marks: Record<number, Mark[]> }
 
@@ -23,7 +24,7 @@ function readDraft(): Draft {
   return { report: '', keys: [], marks: {} }
 }
 
-function Shape({ mark, active, onEdit }: { mark: Mark; active: boolean; onEdit?: () => void }) {
+function Shape({ mark, active, onEdit }: { mark: ShapeMark; active: boolean; onEdit?: () => void }) {
   const { start, end, tool } = mark
   const radius = Math.hypot(end.x - start.x, end.y - start.y)
   return (
@@ -48,7 +49,7 @@ export default function App() {
   const [view, setView] = useState(0)
   const [tool, setTool] = useState<Tool>()
   const [selected, setSelected] = useState<string>()
-  const [drawing, setDrawing] = useState<Mark>()
+  const [drawing, setDrawing] = useState<ShapeMark>()
   const [announcement, setAnnouncement] = useState('')
   const [storageError, setStorageError] = useState(false)
   const [failedView, setFailedView] = useState<number>()
@@ -87,7 +88,7 @@ export default function App() {
     setDraft(current => ({ ...current, marks: { ...current.marks, [view]: update(current.marks[view] ?? []) } }))
   }
 
-  function point(event: PointerEvent<SVGSVGElement>, allowOutside = false): Point {
+  function point(event: MouseEvent<SVGSVGElement>, allowOutside = false): Point {
     const rect = event.currentTarget.getBoundingClientRect()
     const scale = (value: number, origin: number, size: number) => {
       const coordinate = (value - origin) / size * 600
@@ -133,6 +134,13 @@ export default function App() {
               {failedView === view && <p className="image-error" role="alert">This view could not load.</p>}
               <img key={view} src={source(view)} alt={`AI-generated mock radiology image, ${views[view].toLowerCase()}`} onError={() => setFailedView(view)} />
               {failedView !== view && <svg viewBox="0 0 600 600" preserveAspectRatio="none" aria-hidden="true" className={tool ? "drawing-enabled" : undefined}
+                onDoubleClick={event => {
+                  if (event.target !== event.currentTarget) return
+                  const id = crypto.randomUUID()
+                  const start = point(event)
+                  updateMarks(current => [...current, { id, tool: 'text', start, note: '' }])
+                  setSelected(id)
+                }}
                 onPointerDown={event => {
                   if (!tool || event.target !== event.currentTarget || !event.isPrimary || event.button !== 0) return
                   event.currentTarget.setPointerCapture(event.pointerId)
@@ -158,19 +166,18 @@ export default function App() {
                   <marker id="tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#68efcc" /></marker>
                   <marker id="active-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffe291" /></marker>
                 </defs>
-                {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} onEdit={() => setSelected(mark.id)} />)}
+                {marks.map(mark => mark.tool !== 'text' && <Shape key={mark.id} mark={mark} active={selected === mark.id} onEdit={() => setSelected(mark.id)} />)}
                 {drawing && <Shape mark={drawing} active />}
               </svg>}
               {failedView !== view && marks.map(mark => {
-                const { start, end } = mark
-                const isCircle = mark.tool === 'circle'
-                const x = isCircle ? start.x : (start.x + end.x) / 2
-                const y = isCircle ? start.y : (start.y + end.y) / 2
-                const radius = isCircle ? Math.hypot(end.x - start.x, end.y - start.y) : 0
+                const { start, tool: shape } = mark
+                const x = mark.tool === 'arrow' ? (start.x + mark.end.x) / 2 : start.x
+                const y = mark.tool === 'arrow' ? (start.y + mark.end.y) / 2 : start.y
+                const radius = mark.tool === 'circle' ? Math.hypot(mark.end.x - start.x, mark.end.y - start.y) : 0
                 const side = x <= 300 ? 'left' : 'right'
                 const distance = side === 'left' ? x : 600 - x
                 const horizontal = Math.min(55, (distance + radius) / 6)
-                const shape = isCircle ? 'circle' : 'arrow'
+                const markerName = shape === 'text' ? 'text note' : `${shape} marker`
                 return (
                   <div key={mark.id} className={selected === mark.id ? 'mark-label editing' : 'mark-label'}
                     style={{ [side]: `calc(${horizontal}% + .35rem)`, [y <= 300 ? 'top' : 'bottom']: `${Math.min(y, 600 - y) / 6}%` }}>
@@ -180,7 +187,12 @@ export default function App() {
                           const note = event.target.value
                           updateMarks(current => current.map(item => item.id === mark.id ? { ...item, note } : item))
                         }}
-                        onBlur={() => setSelected(current => current === mark.id ? undefined : current)}
+                        onBlur={() => {
+                          if (shape === 'text' && !mark.note.trim()) {
+                            updateMarks(current => current.filter(item => item.id !== mark.id))
+                          }
+                          setSelected(current => current === mark.id ? undefined : current)
+                        }}
                         onKeyDown={event => {
                           if (event.nativeEvent.isComposing) return
                           if (event.key === 'Escape' || (event.key === 'Enter' && !event.shiftKey)) {
@@ -195,12 +207,12 @@ export default function App() {
                         {mark.note || 'Add note'}
                       </button>
                     )}
-                    <button className="mark-remove" aria-label={`Remove ${shape} marker`}
+                    {(shape !== 'text' || mark.note.trim()) && <button className="mark-remove" aria-label={`Remove ${markerName}`}
                       onMouseDown={event => { if (selected === mark.id) event.preventDefault() }}
                       onClick={() => {
                         setPendingRemoval(mark)
                         removalDialog.current?.showModal()
-                      }}>×</button>
+                      }}>×</button>}
                   </div>
                 )
               })}
@@ -210,13 +222,13 @@ export default function App() {
                 <button aria-pressed={tool === 'arrow'} onClick={() => setTool(tool === 'arrow' ? undefined : 'arrow')}>↗ Arrow</button>
                 <button aria-pressed={tool === 'circle'} onClick={() => setTool(tool === 'circle' ? undefined : 'circle')}>○ Circle</button>
               </div>
-              <p>{tool === 'circle' ? 'Press at the center and drag outward.' : tool ? 'Drag on the image to draw.' : 'Select a tool to draw on the image.'}</p>
+              <p>{tool === 'circle' ? 'Press at the center and drag outward. ' : tool ? 'Drag to draw. ' : ''}Double-click the image to add text.</p>
             </div>
             <dialog className="marker-dialog" ref={removalDialog} aria-labelledby="remove-marker-title"
               onClose={() => setPendingRemoval(undefined)}>
               <form method="dialog">
-                <h3 id="remove-marker-title">Remove {pendingRemoval?.tool} marker?</h3>
-                <p>This will remove the marker and its note.</p>
+                <h3 id="remove-marker-title">Remove {pendingRemoval?.tool === 'text' ? 'text note' : `${pendingRemoval?.tool} marker`}?</h3>
+                <p>{pendingRemoval?.tool === 'text' ? 'This will remove the note from the image.' : 'This will remove the marker and its note.'}</p>
                 <div className="dialog-actions">
                   <button autoFocus>Cancel</button>
                   <button type="button" className="confirm-remove" onClick={() => {
