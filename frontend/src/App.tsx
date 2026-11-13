@@ -187,7 +187,7 @@ export default function App() {
             {selectedMark && failedView !== view && (
               <div className="annotation-editor">
                 <label htmlFor={selectedMark.id}>{selectedMark.tool === 'arrow' ? 'Arrow' : 'Circle'} note</label>
-                <textarea id={selectedMark.id} value={selectedMark.note} rows={2} maxLength={240} placeholder="Add a note…"
+                <textarea key={selectedMark.id} id={selectedMark.id} autoFocus value={selectedMark.note} rows={2} maxLength={240} placeholder="Add a note…"
                   onChange={event => updateMarks(current => current.map(mark => mark.id === selectedMark.id ? { ...mark, note: event.target.value } : mark))} />
                 <button onClick={() => {
                   updateMarks(current => current.filter(mark => mark.id !== selectedMark.id))
