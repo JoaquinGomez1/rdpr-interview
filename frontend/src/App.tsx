@@ -77,6 +77,7 @@ export default function App() {
   const [draft, setDraft] = useState(readDraft)
   const [view, setView] = useState(0)
   const [activeKey, setActiveKey] = useState<string>()
+  const [editingCaption, setEditingCaption] = useState<string>()
   const [tool, setTool] = useState<Tool>()
   const [selected, setSelected] = useState<string>()
   const [drawing, setDrawing] = useState<ShapeMark>()
@@ -351,8 +352,22 @@ export default function App() {
                   aria-pressed={activeKey === key.id} aria-label={`View key image ${index + 1}, ${views[key.view]}`}><img src={source(key.view)} alt="" draggable={false} /></button>
                 <div className="key-content">
                   <strong>{index + 1}. {views[key.view]}</strong>
-                  <input aria-label={`Caption for key image ${index + 1}`} placeholder="Add a short caption…" maxLength={160} value={key.caption}
-                    onChange={event => setDraft(current => ({ ...current, keys: current.keys.map(item => item.id === key.id ? { ...item, caption: event.target.value } : item) }))} />
+                  {editingCaption === key.id ? (
+                    <input autoFocus aria-label={`Caption for key image ${index + 1}`} placeholder="Add a short caption…" maxLength={160} value={key.caption}
+                      onChange={event => setDraft(current => ({ ...current, keys: current.keys.map(item => item.id === key.id ? { ...item, caption: event.target.value } : item) }))}
+                      onBlur={() => setEditingCaption(current => current === key.id ? undefined : current)} />
+                  ) : (
+                    <p className="key-caption" role="button" tabIndex={0} aria-label={`Edit caption for key image ${index + 1}`}
+                      onClick={() => setEditingCaption(key.id)}
+                      onKeyDown={event => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault()
+                          setEditingCaption(key.id)
+                        }
+                      }}>
+                      {key.caption || 'Add a short caption…'}
+                    </p>
+                  )}
                 </div>
                 <button aria-label={`Remove key image ${index + 1}`} onClick={() => {
                   if (activeKey === key.id) openView(key.view)

@@ -90,7 +90,9 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .key-list li:active { cursor: grabbing; }
 .key-preview { width: 3.7rem; flex-shrink: 0; padding: .2rem; }
 .key-content { flex: 1; min-width: 0; }
-.key-content input { font-size: .88rem; margin-top: .25rem; }
+.key-content input { font-size: .88rem; margin-top: .25rem; cursor: text; }
+.key-caption { margin: .25rem 0 0; font-size: .88rem; overflow-wrap: anywhere; cursor: text; }
+.key-caption:hover { color: #fff; }
 .empty { margin-top: .4rem; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 900px) {
