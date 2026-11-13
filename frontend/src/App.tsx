@@ -171,12 +171,6 @@ export default function App() {
         <section className="study panel" aria-labelledby="study-title">
           <div className="section-head">
             <div><h2 id="study-title">Chest study</h2><p>5 synthetic views</p></div>
-            <div className="add-key">
-              <button className="accent" disabled={draft.keys.length >= limit}
-                aria-describedby={duplicateHint ? 'duplicate-key-hint' : undefined}
-                onClick={() => addKey(view)}>+ Add key image</button>
-              {duplicateHint && <span id="duplicate-key-hint" role="tooltip">{duplicateHint}</span>}
-            </div>
           </div>
           <div className="viewer">
             <div className="view-title"><strong>{views[view]}</strong>
@@ -307,6 +301,14 @@ export default function App() {
                 <img src={source(index)} alt="" draggable={false} /><span>{name}</span>
               </button>
             ))}
+          </div>
+          <div className="study-actions">
+            <div className="add-key">
+              <button className="accent" disabled={draft.keys.length >= limit}
+                aria-describedby={duplicateHint ? 'duplicate-key-hint' : undefined}
+                onClick={() => addKey(view)}>+ Add key image</button>
+              {duplicateHint && <span id="duplicate-key-hint" role="tooltip">{duplicateHint}</span>}
+            </div>
           </div>
         </section>
 

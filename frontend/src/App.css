@@ -78,6 +78,7 @@ p, .status, .key-heading span { color: #a1b4c2; }
 .thumbs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .45rem; margin-top: .75rem; }
 .thumbs button { min-width: 0; padding: .3rem; display: grid; gap: .2rem; }
 .thumbs img, .key-preview img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 4px; display: block; }
+.study-actions { display: flex; justify-content: flex-end; margin-top: .75rem; }
 .report label { display: block; margin-bottom: .4rem; }
 .report-text { min-height: 14rem; }
 .key-heading { margin: 1rem 0 .25rem; }
