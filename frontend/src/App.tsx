@@ -23,13 +23,18 @@ function readDraft(): Draft {
   return { report: '', keys: [], marks: {} }
 }
 
-function Shape({ mark, active }: { mark: Mark; active: boolean }) {
+function Shape({ mark, active, drawing = false }: { mark: Mark; active: boolean; drawing?: boolean }) {
   const { start, end, tool } = mark
   return (
     <g stroke={active ? '#ffe291' : '#68efcc'} strokeWidth="2.5" fill="none">
       {tool === 'arrow'
         ? <line x1={start.x} y1={start.y} x2={end.x} y2={end.y} markerEnd={active ? 'url(#active-tip)' : 'url(#tip)'} />
-        : <circle cx={start.x} cy={start.y} r={Math.hypot(end.x - start.x, end.y - start.y)} />}
+        : (
+          <>
+            <circle cx={start.x} cy={start.y} r={Math.hypot(end.x - start.x, end.y - start.y)} />
+            {drawing && <circle cx={start.x} cy={start.y} r="3" fill="#ffe291" stroke="none" />}
+          </>
+        )}
     </g>
   )
 }
@@ -77,9 +82,12 @@ export default function App() {
     setDraft(current => ({ ...current, marks: { ...current.marks, [view]: update(current.marks[view] ?? []) } }))
   }
 
-  function point(event: PointerEvent<SVGSVGElement>): Point {
+  function point(event: PointerEvent<SVGSVGElement>, allowOutside = false): Point {
     const rect = event.currentTarget.getBoundingClientRect()
-    const scale = (value: number, origin: number, size: number) => Math.max(0, Math.min(600, (value - origin) / size * 600))
+    const scale = (value: number, origin: number, size: number) => {
+      const coordinate = (value - origin) / size * 600
+      return allowOutside ? coordinate : Math.max(0, Math.min(600, coordinate))
+    }
     return { x: scale(event.clientX, rect.left, rect.width), y: scale(event.clientY, rect.top, rect.height) }
   }
 
@@ -128,12 +136,12 @@ export default function App() {
                 }}
                 onPointerMove={event => {
                   if (drawing && event.currentTarget.hasPointerCapture(event.pointerId)) {
-                    setDrawing({ ...drawing, end: point(event) })
+                    setDrawing({ ...drawing, end: point(event, drawing.tool === 'circle') })
                   }
                 }}
                 onPointerUp={event => {
                   if (!drawing || !event.currentTarget.hasPointerCapture(event.pointerId)) return
-                  const end = point(event)
+                  const end = point(event, drawing.tool === 'circle')
                   setDrawing(undefined)
                   if (Math.hypot(end.x - drawing.start.x, end.y - drawing.start.y) < 6) return
                   updateMarks(current => [...current, { ...drawing, end }])
@@ -146,7 +154,7 @@ export default function App() {
                   <marker id="active-tip" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M0 0L10 5L0 10Z" fill="#ffe291" /></marker>
                 </defs>
                 {marks.map(mark => <Shape key={mark.id} mark={mark} active={selected === mark.id} />)}
-                {drawing && <Shape mark={drawing} active />}
+                {drawing && <Shape mark={drawing} active drawing />}
               </svg>}
               {failedView !== view && marks.map(mark => {
                 const { start, end } = mark
@@ -174,7 +182,7 @@ export default function App() {
                 <button aria-pressed={tool === 'arrow'} onClick={() => setTool(tool === 'arrow' ? undefined : 'arrow')}>↗ Arrow</button>
                 <button aria-pressed={tool === 'circle'} onClick={() => setTool(tool === 'circle' ? undefined : 'circle')}>○ Circle</button>
               </div>
-              <p>{tool ? 'Drag on the image to draw.' : 'Select a tool to draw on the image.'}</p>
+              <p>{tool === 'circle' ? 'Press at the center and drag outward.' : tool ? 'Drag on the image to draw.' : 'Select a tool to draw on the image.'}</p>
             </div>
             {selectedMark && failedView !== view && (
               <div className="annotation-editor">
