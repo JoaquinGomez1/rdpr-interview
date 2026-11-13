@@ -33,7 +33,7 @@ p, .status, .key-heading span { color: #a1b4c2; }
   color: #fff;
   border-radius: 4px;
 }
-.mark-label.editing { width: min(calc(200px + 1.5rem), 42%); z-index: 1; }
+.mark-label.editing { z-index: 1; }
 .mark-label textarea, .mark-note {
   min-width: 0;
   max-width: 200px;
@@ -42,7 +42,11 @@ p, .status, .key-heading span { color: #a1b4c2; }
   text-align: left;
   white-space: pre-wrap;
 }
-.mark-label textarea { resize: none; }
+.mark-label textarea {
+  width: auto;
+  field-sizing: content;
+  resize: none;
+}
 .mark-note, .mark-remove { border: 0; background: transparent; }
 .mark-note { cursor: text; }
 .mark-note:hover { background: transparent; }

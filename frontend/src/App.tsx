@@ -182,7 +182,7 @@ export default function App() {
                   <div key={mark.id} className={selected === mark.id ? 'mark-label editing' : 'mark-label'}
                     style={{ [side]: `calc(${horizontal}% + .35rem)`, [y <= 300 ? 'top' : 'bottom']: `${Math.min(y, 600 - y) / 6}%` }}>
                     {selected === mark.id ? (
-                      <textarea autoFocus aria-label={`${shape} note`} value={mark.note} rows={2} maxLength={240} placeholder="Add a note…"
+                      <textarea autoFocus aria-label={`${shape} note`} value={mark.note} rows={1} maxLength={240} placeholder="Add note…"
                         onChange={event => {
                           const note = event.target.value
                           updateMarks(current => current.map(item => item.id === mark.id ? { ...item, note } : item))
