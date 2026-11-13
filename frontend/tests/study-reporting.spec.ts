@@ -12,8 +12,32 @@ test("drags study thumbnails into the report and reorders key images by dragging
   const cards = keyImages.getByRole("listitem");
   await expect(cards).toHaveText([/1\. Frontal chest/, /2\. Lateral chest/]);
 
-  await cards.nth(1).dragTo(cards.nth(0));
+  const source = await cards.nth(1).boundingBox();
+  const target = await cards.nth(0).boundingBox();
+  if (!source || !target) throw new Error("Expected visible key image cards");
+
+  await page.mouse.move(source.x + 8, source.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(source.x + 20, source.y + 20);
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 4);
+  await page.mouse.move(target.x + target.width / 2 + 1, target.y + target.height / 4);
+  await expect(cards.nth(1)).toHaveAttribute("data-dragging", "true");
+  await expect(cards.nth(0)).toHaveAttribute("data-insertion-edge", "before");
+  await expect(cards).toHaveText([/1\. Frontal chest/, /2\. Lateral chest/]);
+  await page.mouse.up();
+
   await expect(cards).toHaveText([/1\. Lateral chest/, /2\. Frontal chest/]);
+  await expect(keyImages.locator("[data-dragging], [data-insertion-edge]")).toHaveCount(0);
+
+  const secondCard = await cards.nth(1).boundingBox();
+  if (!secondCard) throw new Error("Expected a visible drop target");
+  await cards.nth(0).dragTo(cards.nth(1), {
+    targetPosition: { x: secondCard.width / 2, y: secondCard.height * 0.75 },
+  });
+  await expect(cards).toHaveText([/1\. Frontal chest/, /2\. Lateral chest/]);
+
+  await page.reload();
+  await expect(cards).toHaveText([/1\. Frontal chest/, /2\. Lateral chest/]);
 });
 
 test("selects a key image and moves it with the keyboard while retaining focus", async ({ page }) => {

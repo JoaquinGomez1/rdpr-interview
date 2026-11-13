@@ -27,7 +27,7 @@ The Playwright tests cover the path from reviewing a study to choosing and order
 
 - **Select a study thumbnail.** The test checks that the selected thumbnail opens the matching image and that the image loads. Radiologists need to inspect the intended view before choosing it to illustrate a finding.
 - **Add a key image with the button.** The test checks that **Add key image** puts the currently selected image and its preview in the report. This gives radiologists a direct way to attach evidence to their findings.
-- **Add and reorder key images by dragging.** The test drags study thumbnails into the report and then reorders the entries. These gestures let radiologists choose evidence and arrange it in the order the referring doctor should see it.
+- **Add and reorder key images by dragging.** The test drags study thumbnails into the report, checks the insertion marker during a drag, and verifies that dropping changes the order and that the draft retains it after reload. Radiologists can arrange evidence in the order the referring doctor should see it.
 - **Select and reorder a key image with the keyboard.** The test opens a key image with Enter, moves it with Shift+Right, and checks that focus follows the moved image and its new position is announced. This lets users review and organize evidence without a mouse.
 
 Run the tests from `frontend` with `npx playwright install chromium` followed by `npm test`. Set `PLAYWRIGHT_CHANNEL=chrome` to use an installed Chrome browser.
