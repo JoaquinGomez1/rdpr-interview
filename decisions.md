@@ -33,3 +33,7 @@ Run `npm test` from `backend` for validation tests. Set `TEST_DATABASE_URL` to a
 The demo opens directly to a single mock study. With another day, refine touch reordering and test the keyboard flow with users.
 
 I used AI to compare deployment options and draft the API and data model. I rejected its initial suggestion to disallow duplicate image IDs because the same image can support distinct findings with different captions.
+
+## API report payload
+
+Send key image references and captions without image data. Represent report text as `report.message` so the report object can gain additional fields later.

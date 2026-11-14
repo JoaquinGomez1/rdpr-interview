@@ -30,7 +30,7 @@ export async function readStudyImages() {
 
 export type StudyImage = Awaited<ReturnType<typeof readStudyImages>>[number];
 export type KeyImage = { id: string; view: number; caption: string };
-export type Report = { report: string; keys: KeyImage[] };
+export type Report = { report: { message: string }; keys: KeyImage[] };
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -47,7 +47,8 @@ function isText(value: unknown, maxLength: number): value is string {
 export function validateReport(body: unknown, images: StudyImage[]): Report {
   if (
     !isObject(body) ||
-    !isText(body.report, 16_000) ||
+    !isObject(body.report) ||
+    !isText(body.report.message, 16_000) ||
     !Array.isArray(body.keys)
   ) {
     throw new UnprocessableEntityException(
@@ -97,5 +98,5 @@ export function validateReport(body: unknown, images: StudyImage[]): Report {
     throw new UnprocessableEntityException(
       'A report can contain up to 15 key images.',
     );
-  return { report: body.report, keys };
+  return { report: { message: body.report.message }, keys };
 }

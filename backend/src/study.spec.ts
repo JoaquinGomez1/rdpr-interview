@@ -19,7 +19,7 @@ describe('report validation', () => {
       key(0, 'Other'),
       key(0),
     ];
-    expect(validateReport({ report: 'Findings', keys }, images).keys).toEqual([
+    expect(validateReport({ report: { message: 'Findings' }, keys }, images).keys).toEqual([
       keys[0],
       keys[2],
       keys[3],
@@ -29,12 +29,12 @@ describe('report validation', () => {
 
   it('applies the limit after merging', () => {
     const keys = Array.from({ length: 16 }, () => key(0, 'Same finding'));
-    expect(validateReport({ report: '', keys }, images).keys).toEqual([
+    expect(validateReport({ report: { message: '' }, keys }, images).keys).toEqual([
       keys[0],
     ]);
     expect(() =>
       validateReport(
-        { report: '', keys: keys.map((entry) => ({ ...entry, caption: '' })) },
+        { report: { message: '' }, keys: keys.map((entry) => ({ ...entry, caption: '' })) },
         images,
       ),
     ).toThrow('up to 15 key images');

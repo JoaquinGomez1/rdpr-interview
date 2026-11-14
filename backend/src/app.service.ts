@@ -67,7 +67,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
   async load(reportId: string) {
     const { rows } = await this.db.query<Report>(
       `
-      SELECT report, COALESCE((
+      SELECT jsonb_build_object('message', report) AS report, COALESCE((
         SELECT jsonb_agg(jsonb_build_object('id', id, 'view', view, 'caption', caption) ORDER BY position)
         FROM report_key_images WHERE report_id = $1
       ), '[]'::jsonb) AS keys
@@ -87,7 +87,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
         `
         INSERT INTO reports (id, report) VALUES ($1, $2)
       `,
-        [reportId, report.report],
+        [reportId, report.report.message],
       );
       await client.query(
         `
