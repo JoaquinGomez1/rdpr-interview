@@ -13,6 +13,11 @@ function key(view: number, caption = 'Finding') {
 describe('report validation', () => {
   const report = { message: '0123456789' };
 
+  it('accepts the nested report message and the first study view', () => {
+    const payload = { report: { message: 'Example study finding' }, keys: [key(0)] };
+    expect(validateReport(payload, images)).toEqual(payload);
+  });
+
   it.each(['', '             ', ' 123456789 '])('rejects short report text %j', (message) => {
     expect(() => validateReport({ report: { message }, keys: [key(0)] }, images))
       .toThrow('10 to 16,000 characters');

@@ -6,7 +6,7 @@ Install Node.js LTS, npm, and PostgreSQL. Set `DATABASE_URL` to a PostgreSQL dat
 
 ```sh
 npm --prefix backend install
-npm --prefix backend start
+npm --prefix backend run start:dev
 ```
 
 ```sh
@@ -15,6 +15,8 @@ npm --prefix frontend run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173), or use the URL Vite prints if the port is occupied. Vite proxies API calls to port 3000 by default. The app includes five mock images, stores drafts in browser storage, and saves confirmed reports to PostgreSQL.
+
+If saving returns “Provide report text up to 16,000 characters and a list of key images,” Vite is reaching an older API that expects a string in `report`. Stop that backend and start the current checkout with `npm --prefix backend run start:dev`. If you're running the API through Docker Compose, use `docker compose up --build` to rebuild the app from the current checkout.
 
 ## Run with Docker Compose
 

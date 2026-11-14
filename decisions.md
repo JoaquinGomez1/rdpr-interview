@@ -38,3 +38,4 @@ I used AI to compare deployment options and draft the API and data model. I reje
 ## API report payload
 
 Send key image references and captions without image data. Represent report text as `report.message` so the report object can gain additional fields later.
+Run the local API in watch mode so validation changes stay in sync with Vite during development.
