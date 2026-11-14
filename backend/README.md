@@ -31,6 +31,8 @@
 $ npm install
 ```
 
+Nest loads environment variables from `backend/.env` on startup. Copy `.env.example` to `.env` and set `DATABASE_URL`; values already present in the process environment take precedence. Keep `.env` local and provide the same variables through your deployment environment in production.
+
 ## Compile and run the project
 
 ```bash
