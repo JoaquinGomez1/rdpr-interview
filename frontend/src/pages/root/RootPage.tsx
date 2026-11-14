@@ -69,12 +69,12 @@ function ReportWorkspace({ draft, images, editor }: {
   const [saveError, setSaveError] = useState<ReportApiError>();
   const { keys, report } = draft;
 
-  async function submit() {
+  async function submit(validDraft: Draft) {
     if (!editor || saving) return;
     setSaving(true);
     setSaveError(undefined);
     try {
-      const saved = await saveReport(draft);
+      const saved = await saveReport(validDraft);
       editor.clearDraft();
       navigate(`/${saved.id}`, { replace: true });
     } catch (error) {
@@ -173,9 +173,10 @@ function ReportWorkspace({ draft, images, editor }: {
           onMoveKey={moveKey}
           onChangeCaption={changeCaption}
           onRemoveKey={removeKey}
-          submit={() => dialog.current?.showModal()}
+          submit={editor?.handleSubmit(() => dialog.current?.showModal())}
           saving={saving}
-          dirty={editor?.dirty ?? false}
+          canSave={editor?.isValid ?? false}
+          validationMessage={editor?.validationMessage}
           readOnly={!editor}
           saveError={saveError}
         />
@@ -188,7 +189,7 @@ function ReportWorkspace({ draft, images, editor }: {
             <button autoFocus>Cancel</button>
             <button type="button" className="accent" onClick={() => {
               dialog.current?.close();
-              void submit();
+              void editor.handleSubmit(submit)();
             }}>Save report</button>
           </form>
         </dialog>

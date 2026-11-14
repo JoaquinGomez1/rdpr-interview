@@ -39,7 +39,7 @@ describe('Report API', () => {
     const first = { id: randomUUID(), view: 3, caption: 'Axial finding' };
     const second = { id: randomUUID(), view: 0, caption: 'Frontal finding' };
     const duplicate = { ...first, id: randomUUID() };
-    const report = 'Study findings';
+    const report = { message: 'Study findings' };
     const { body: saved } = await browser
       .post(path)
       .send({ report, keys: [first, duplicate, second] })
@@ -48,12 +48,12 @@ describe('Report API', () => {
     const { body: loaded } = await request(app.getHttpServer())
       .get(`${path}/${saved.id}`)
       .expect(200);
-    expect(loaded.report).toBe(report);
+    expect(loaded.report).toEqual(report);
     expect(loaded.keys).toEqual([first, second]);
     expect(loaded.images).toHaveLength(5);
     const { body: next } = await browser
       .post(path)
-      .send({ report, keys: [] })
+      .send({ report, keys: [first] })
       .expect(201);
     expect(next.id).not.toBe(saved.id);
     await browser
@@ -68,14 +68,18 @@ describe('Report API', () => {
     await api.get(`${path}/invalid`).expect(404);
     await api.get(`${path}/${randomUUID()}`).expect(404);
     const key = { id: randomUUID(), view: 0, caption: '' };
+    const report = { message: 'Study findings' };
+    await api.post(path).send({ report: { message: 'Short' }, keys: [key] }).expect(422);
+    await api.post(path).send({ report, keys: [] }).expect(422);
+    await api.post(path).send({ report, keys: [key] }).expect(422);
     const unknown = await api
       .post(path)
-      .send({ report: '', keys: [{ ...key, view: 99 }] })
+      .send({ report, keys: [{ ...key, view: 99 }] })
       .expect(422);
     expect(unknown.body.message).toContain('outside this study');
     const invalid = await api
       .post(path)
-      .send({ report: '', keys: [{ ...key, caption: 'a'.repeat(161) }] })
+      .send({ report, keys: [{ ...key, caption: 'a'.repeat(161) }] })
       .expect(422);
     expect(invalid.body.message).toContain('Caption 1');
   });

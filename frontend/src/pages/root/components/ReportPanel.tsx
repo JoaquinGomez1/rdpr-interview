@@ -8,16 +8,18 @@ export function ReportPanel({
   onReportChange,
   submit,
   saving,
-  dirty,
+  canSave,
+  validationMessage,
   saveError,
   readOnly = false,
   ...keyImages
 }: KeyImageListProps & {
   report: string;
   onReportChange: (report: string) => void;
-  submit: () => void;
+  submit?: () => void;
   saving: boolean;
-  dirty: boolean;
+  canSave: boolean;
+  validationMessage?: string;
   saveError?: ReportApiError;
 }) {
   return (
@@ -40,9 +42,19 @@ export function ReportPanel({
       </div>
       <div className="report-actions">
         {readOnly ? <Link className="accent new-report" to="/">New report</Link> : (
-          <button className="accent" disabled={!dirty || saving} onClick={submit}>
-            {saving ? "Saving…" : "Save report"}
-          </button>
+          <div
+            className="save-report"
+            tabIndex={validationMessage ? 0 : undefined}
+            aria-label={validationMessage ? "Save report unavailable" : undefined}
+            aria-describedby={validationMessage ? "report-validation" : undefined}
+          >
+            <button className="accent" disabled={!canSave || saving} onClick={submit}>
+              {saving ? "Saving…" : "Save report"}
+            </button>
+            {validationMessage && (
+              <span id="report-validation" role="tooltip">{validationMessage}</span>
+            )}
+          </div>
         )}
         {saveError && <p role="alert">{saveError.message}</p>}
         {saveError?.requestId && (

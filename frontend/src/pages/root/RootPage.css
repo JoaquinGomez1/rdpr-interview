@@ -67,10 +67,12 @@ p,
 .accent:hover {
   background: #95f7dd;
 }
-.add-key {
+.add-key,
+.save-report {
   position: relative;
 }
-.add-key [role="tooltip"] {
+.add-key [role="tooltip"],
+.save-report [role="tooltip"] {
   position: absolute;
   z-index: 3;
   right: 0;
@@ -86,8 +88,16 @@ p,
   pointer-events: none;
 }
 .add-key:hover [role="tooltip"],
-.add-key:focus-within [role="tooltip"] {
+.add-key:focus-within [role="tooltip"],
+.save-report:hover [role="tooltip"],
+.save-report:focus-within [role="tooltip"] {
   opacity: 1;
+}
+.save-report [role="tooltip"] {
+  right: auto;
+  left: 0;
+  top: auto;
+  bottom: 100%;
 }
 .viewer {
   border: 1px solid #30414e;

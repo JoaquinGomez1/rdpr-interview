@@ -49,11 +49,14 @@ export function validateReport(body: unknown, images: StudyImage[]): Report {
     !isObject(body) ||
     !isObject(body.report) ||
     !isText(body.report.message, 16_000) ||
-    !Array.isArray(body.keys)
+    body.report.message.trim().length < 10
   ) {
     throw new UnprocessableEntityException(
-      'Provide report text up to 16,000 characters and a list of key images.',
+      'Report text must be 10 to 16,000 characters, excluding leading and trailing whitespace from the minimum.',
     );
+  }
+  if (!Array.isArray(body.keys) || body.keys.length === 0) {
+    throw new UnprocessableEntityException('Add at least one key image.');
   }
 
   const ids = new Set<string>();
@@ -82,16 +85,14 @@ export function validateReport(body: unknown, images: StudyImage[]): Report {
       throw new UnprocessableEntityException(
         `Key image ${position} is outside this study.`,
       );
-    if (!isText(key.caption, 160) || /[\r\n]/.test(key.caption)) {
+    if (!isText(key.caption, 160) || !key.caption.trim() || /[\r\n]/.test(key.caption)) {
       throw new UnprocessableEntityException(
-        `Caption ${position} must be one line of up to 160 characters.`,
+        `Caption ${position} is required and must be one line of up to 160 characters.`,
       );
     }
-    if (key.caption.trim()) {
-      const match = `${image.checksum}:${key.caption}`;
-      if (captionedImages.has(match)) continue;
-      captionedImages.add(match);
-    }
+    const match = `${image.checksum}:${key.caption}`;
+    if (captionedImages.has(match)) continue;
+    captionedImages.add(match);
     keys.push({ id, view: image.view, caption: key.caption });
   }
   if (keys.length > 15)

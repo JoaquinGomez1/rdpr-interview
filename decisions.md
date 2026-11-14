@@ -10,6 +10,7 @@ React, TypeScript, and Vite on the front end. NestJS and PostgreSQL on the back 
 - Keep an unfinished draft in `localStorage`, keyed by a separate draft identifier returned by the API for this browser and study. Restore it on reload at `/`. **Save report** opens a confirmation that the saved report will be read-only. After a successful save, clear the draft and open `/<report UUID>`. **New report** returns to `/`.
 - Saved reports are read-only because the demo has no login or ownership checks. Anyone with the UUID link can view the report, and nobody can modify it after creation.
 - If saving fails, preserve the draft and show an error beside **Save report**. Include an expandable request ID when the server returns one.
+- Require at least 10 characters of trimmed report text and at least one key image, with a nonblank caption for every entry. React Hook Form disables saving and explains the missing inputs on hover or keyboard focus. The API applies the same requirements before merging duplicate key images.
 
 ## Images and persistence
 
