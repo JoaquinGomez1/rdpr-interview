@@ -4,6 +4,8 @@
 
 React, TypeScript, and Vite on the front end. NestJS and PostgreSQL on the back end. Docker Compose runs both locally. The production Dockerfile builds React and serves it from NestJS alongside `/api`. The hosted demo link is pending.
 
+Compose publishes the app on port 3001 so local NestJS can use port 3000 at the same time. Local NestJS reaches Compose PostgreSQL through the loopback port 5433. The container reaches PostgreSQL at `db:5432` on the Compose network.
+
 ## Editing and saving
 
 - Drag a study thumbnail into the key-image list to add it. To reorder, drag an entry or Tab to it and press Shift+Left or Shift+Right. Keep focus on the moved entry and announce its new position. Show a hint beside the list: “Tab to a key image, then use Shift + ← or → to move it.” Dragging is easy to discover, and the shortcut makes repeated edits faster for frequent users. Start with two desktop panels and decide the narrow-window layout after trying the first build.

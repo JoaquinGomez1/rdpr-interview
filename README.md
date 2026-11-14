@@ -1,8 +1,10 @@
 # Radpair reporting challenge
 
-## Run without Docker
+## Run NestJS and Vite locally
 
-Install Node.js LTS, npm, and PostgreSQL. Set `DATABASE_URL` to a PostgreSQL database, then run the backend and frontend in separate terminals from the repository root:
+Install Node.js LTS and npm. From the repository root, run `docker compose up -d --wait db` to start PostgreSQL and copy `backend/.env.example` to `backend/.env`. If you already have a local PostgreSQL instance, set `DATABASE_URL` in `backend/.env` to its connection URL instead. The example connects to Compose PostgreSQL at `127.0.0.1:5433`. Update any existing `DATABASE_URL` that uses the Compose hostname `db`.
+
+Run the backend and frontend in separate terminals from the repository root:
 
 ```sh
 npm --prefix backend install
@@ -26,7 +28,7 @@ Install and start Docker Desktop, or use Docker Engine with the Compose plugin. 
 docker compose up --build
 ```
 
-When NestJS finishes starting, open [http://localhost:3000](http://localhost:3000) for the React app. Compose builds both apps and starts PostgreSQL.
+When NestJS finishes starting, open [http://localhost:3001](http://localhost:3001) for the React app. Compose builds both apps and starts PostgreSQL. The Compose app uses `db:5432` on its internal network. Local NestJS can run alongside it on port 3000.
 
 Press `Ctrl+C` to stop the services. Run `docker compose down` to remove the containers while keeping the local data volumes.
 
