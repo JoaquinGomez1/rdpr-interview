@@ -69,7 +69,11 @@ export function KeyImageList({
 
   const insertionIndex = useDragLayer((monitor) => {
     const pointer = monitor.getClientOffset();
-    if (!pointer || !list.current?.contains(document.elementFromPoint(pointer.x, pointer.y))) return;
+    if (
+      !pointer ||
+      !list.current?.contains(document.elementFromPoint(pointer.x, pointer.y))
+    )
+      return;
     if (monitor.getItemType() === studyImageType) {
       if (keys.length < keyImageLimit) return keys.length;
       return;
@@ -88,11 +92,13 @@ export function KeyImageList({
           {keys.length} / {keyImageLimit}
         </span>
       </div>
-      {!readOnly && <p id="key-help">
-        {keys.length >= keyImageLimit
-          ? "Limit reached. Remove a key image to add another."
-          : "Drag in a study image or use Add key image."}
-      </p>}
+      {!readOnly && (
+        <p id="key-help">
+          {keys.length >= keyImageLimit
+            ? "Limit reached. Remove a key image to add another."
+            : "Drag in a study image or use Add key image."}
+        </p>
+      )}
       {!readOnly && keys.length > 1 && (
         <p id="reorder-help">
           Drag to reorder, or Tab to a key image and press Shift + ← or Shift +

@@ -19,11 +19,13 @@ export class HttpErrorFilter extends BaseExceptionFilter {
         : this.isHttpError(error)
           ? error.statusCode
           : 500;
+
     await this.logger.record(
       host.switchToHttp().getRequest<Request>(),
       error,
       status,
     );
+
     super.catch(error, host);
   }
 }

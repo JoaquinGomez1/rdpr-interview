@@ -48,7 +48,8 @@ export function KeyImageCard({
       data-insertion-edge={insertionEdge}
       onKeyDown={(event) => {
         if (
-          readOnly || event.target !== event.currentTarget ||
+          readOnly ||
+          event.target !== event.currentTarget ||
           !event.shiftKey ||
           !["ArrowLeft", "ArrowRight"].includes(event.key)
         )
@@ -71,16 +72,24 @@ export function KeyImageCard({
         />
       </button>
       <div className="key-content">
-        <strong>{position}. {viewName}</strong>
-        {readOnly ? (caption && <p className="key-caption">{caption}</p>) : <KeyImageCaption
-          position={position}
-          caption={caption}
-          onChange={onCaptionChange}
-        />}
+        <strong>
+          {position}. {viewName}
+        </strong>
+        {readOnly ? (
+          caption && <p className="key-caption">{caption}</p>
+        ) : (
+          <KeyImageCaption
+            position={position}
+            caption={caption}
+            onChange={onCaptionChange}
+          />
+        )}
       </div>
-      {!readOnly && <button aria-label={`Remove key image ${position}`} onClick={onRemove}>
-        ×
-      </button>}
+      {!readOnly && (
+        <button aria-label={`Remove key image ${position}`} onClick={onRemove}>
+          ×
+        </button>
+      )}
     </li>
   );
 }

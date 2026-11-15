@@ -25,7 +25,11 @@ export function StudyPanel({
   const existingPositions = keyImagePositions(keys, view);
 
   return (
-    <section className="study panel" aria-labelledby="study-title" inert={saving}>
+    <section
+      className="study panel"
+      aria-labelledby="study-title"
+      inert={saving}
+    >
       <div className="section-head">
         <div>
           <h2 id="study-title">Chest study</h2>
@@ -44,23 +48,28 @@ export function StudyPanel({
           />
         ))}
       </div>
-      {!readOnly && <div className="study-actions">
-        <div className="add-key">
-          <button
-            className="accent"
-            disabled={keys.length >= keyImageLimit}
-            aria-describedby={existingPositions.length ? "duplicate-key-hint" : undefined}
-            onClick={() => onAddKey(view)}
-          >
-            + Add key image
-          </button>
-          {existingPositions.length > 0 && (
-            <span id="duplicate-key-hint" role="tooltip">
-              Already in the report as key image {existingPositions.join(", ")}.
-            </span>
-          )}
+      {!readOnly && (
+        <div className="study-actions">
+          <div className="add-key">
+            <button
+              className="accent"
+              disabled={keys.length >= keyImageLimit}
+              aria-describedby={
+                existingPositions.length ? "duplicate-key-hint" : undefined
+              }
+              onClick={() => onAddKey(view)}
+            >
+              + Add key image
+            </button>
+            {existingPositions.length > 0 && (
+              <span id="duplicate-key-hint" role="tooltip">
+                Already in the report as key image{" "}
+                {existingPositions.join(", ")}.
+              </span>
+            )}
+          </div>
         </div>
-      </div>}
+      )}
     </section>
   );
 }

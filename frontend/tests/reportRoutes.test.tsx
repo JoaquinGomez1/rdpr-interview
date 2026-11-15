@@ -9,7 +9,10 @@ import { study } from "./studyFixture";
 test("preserves the draft after a failed save, then opens the saved report on retry", async () => {
   const user = userEvent.setup();
   const id = "04fc9ecf-4953-44e7-8a4a-728afbb1c66a";
-  const report = { report: { message: "Saved findings" }, keys: [{ id, view: 0, caption: "A saved caption" }] };
+  const report = {
+    report: { message: "Saved findings" },
+    keys: [{ id, view: 0, caption: "A saved caption" }],
+  };
   let saveAttempts = 0;
   const fetchReport = vi.fn(async (url: string, options?: RequestInit) => {
     if (options?.method === "POST") {
@@ -29,26 +32,51 @@ test("preserves the draft after a failed save, then opens the saved report on re
   vi.stubGlobal("fetch", fetchReport);
   const dialogPrototype = HTMLDialogElement.prototype;
   Object.defineProperties(dialogPrototype, {
-    showModal: { configurable: true, value(this: HTMLDialogElement) { this.open = true; } },
-    close: { configurable: true, value(this: HTMLDialogElement) { this.open = false; } },
+    showModal: {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.open = true;
+      },
+    },
+    close: {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        this.open = false;
+      },
+    },
   });
   window.history.replaceState(null, "", "/");
   localStorage.clear();
-  render(<DndProvider backend={TestBackend}><App /></DndProvider>);
+  render(
+    <DndProvider backend={TestBackend}>
+      <App />
+    </DndProvider>,
+  );
 
   const reportText = await screen.findByLabelText("Report text");
   const reportPanel = within(screen.getByRole("region", { name: "Report" }));
   const save = screen.getByRole("button", { name: "Save report" });
   expect(save).toBeDisabled();
-  expect(await reportPanel.findByRole("tooltip")).toHaveTextContent("Enter at least 10 characters");
+  expect(await reportPanel.findByRole("tooltip")).toHaveTextContent(
+    "Enter at least 10 characters",
+  );
   await user.type(reportText, "Saved findings");
   expect(save).toBeDisabled();
-  expect(reportPanel.getByRole("tooltip")).toHaveTextContent("Add at least one key image.");
+  expect(reportPanel.getByRole("tooltip")).toHaveTextContent(
+    "Add at least one key image.",
+  );
   await user.click(screen.getByRole("button", { name: /add key image/i }));
   expect(save).toBeDisabled();
-  expect(reportPanel.getByRole("tooltip")).toHaveTextContent("Add a caption for key image 1.");
-  await user.click(screen.getByRole("button", { name: "Edit caption for key image 1" }));
-  await user.type(screen.getByLabelText("Caption for key image 1"), "A saved caption");
+  expect(reportPanel.getByRole("tooltip")).toHaveTextContent(
+    "Add a caption for key image 1.",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Edit caption for key image 1" }),
+  );
+  await user.type(
+    screen.getByLabelText("Caption for key image 1"),
+    "A saved caption",
+  );
   expect(save).toBeEnabled();
   await user.click(save);
   const confirmation = await screen.findByRole("dialog", {
@@ -80,7 +108,9 @@ test("preserves the draft after a failed save, then opens the saved report on re
   expect(await screen.findByText("A saved caption")).toBeVisible();
   expect(window.location.pathname).toBe(`/${id}`);
   expect(screen.getByLabelText("Report text")).toHaveAttribute("readonly");
-  expect(screen.queryByRole("button", { name: /add|remove|edit caption/i })).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /add|remove|edit caption/i }),
+  ).toBeNull();
   await user.click(screen.getByRole("link", { name: "New report" }));
   expect(await screen.findByLabelText("Report text")).toHaveValue("");
   expect(window.location.pathname).toBe("/");

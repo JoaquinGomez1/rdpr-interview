@@ -1,7 +1,7 @@
 import { HttpException, Inject, Injectable, Logger } from '@nestjs/common';
 import type { Request } from 'express';
 import { HttpErrorRepository } from './http-error.repository.js';
-import { requestIdHeader } from './request-id.middleware.js';
+import { REQUEST_ID_HEADER } from './request-id.middleware.js';
 
 @Injectable()
 export class HttpErrorLogger {
@@ -14,7 +14,7 @@ export class HttpErrorLogger {
   ) {}
 
   async record(request: Request, error: unknown, statusCode: number) {
-    const requestId = request.headers[requestIdHeader];
+    const requestId = request.headers[REQUEST_ID_HEADER];
     if (typeof requestId !== 'string' || this.recorded.has(request)) return;
     this.recorded.add(request);
 
@@ -26,6 +26,7 @@ export class HttpErrorLogger {
         : error instanceof Error
           ? error.message
           : 'Unknown HTTP error';
+
     const log = {
       requestId,
       path: request.originalUrl.split('?')[0],

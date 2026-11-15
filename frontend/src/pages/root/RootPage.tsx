@@ -82,17 +82,29 @@ export default function RootPage({ reportId }: { reportId?: string }) {
 
 function StudyEditor({ study }: { study: Study }) {
   const editor = useReportDraft(study);
-  return <ReportWorkspace draft={editor.draft} images={study.images} editor={editor} />;
+  return (
+    <ReportWorkspace
+      draft={editor.draft}
+      images={study.images}
+      editor={editor}
+    />
+  );
 }
 
-function ReportWorkspace({ draft, images, editor }: {
+function ReportWorkspace({
+  draft,
+  images,
+  editor,
+}: {
   draft: Draft;
   images: StudyImage[];
   editor?: ReturnType<typeof useReportDraft>;
 }) {
   const navigate = useNavigate();
   const dialog = useRef<HTMLDialogElement>(null);
-  const [selection, setSelection] = useState<ImageSelection>({ view: images[0].view });
+  const [selection, setSelection] = useState<ImageSelection>({
+    view: images[0].view,
+  });
   const [announcement, setAnnouncement] = useState("");
   const [saving, setSaving] = useState(false);
   const { keys, report } = draft;
@@ -142,7 +154,8 @@ function ReportWorkspace({ draft, images, editor }: {
   function moveKey(id: string, destination: number) {
     const from = keys.findIndex((key) => key.id === id);
     if (
-      !editor || saving ||
+      !editor ||
+      saving ||
       from < 0 ||
       destination < 0 ||
       destination >= keys.length ||
@@ -161,7 +174,9 @@ function ReportWorkspace({ draft, images, editor }: {
   function changeCaption(id: string, caption: string) {
     editor?.setDraft((current) => ({
       ...current,
-      keys: current.keys.map((key) => (key.id === id ? { ...key, caption } : key)),
+      keys: current.keys.map((key) =>
+        key.id === id ? { ...key, caption } : key,
+      ),
     }));
   }
 
@@ -181,7 +196,13 @@ function ReportWorkspace({ draft, images, editor }: {
           <h1>Study reporting</h1>
         </div>
         <span className="status" role="status">
-          {editor ? (editor.dirty ? editor.storageError ? "Draft could not be saved locally" : "Draft saved on this device" : "") : "Saved report · Read-only"}
+          {editor
+            ? editor.dirty
+              ? editor.storageError
+                ? "Draft could not be saved locally"
+                : "Draft saved on this device"
+              : ""
+            : "Saved report · Read-only"}
         </span>
       </header>
       <main className="workspace" data-read-only={!editor || undefined}>
@@ -214,15 +235,28 @@ function ReportWorkspace({ draft, images, editor }: {
         />
       </main>
       {editor && (
-        <dialog className="panel save-dialog" ref={dialog} aria-labelledby="save-title" aria-describedby="save-description">
+        <dialog
+          className="panel save-dialog"
+          ref={dialog}
+          aria-labelledby="save-title"
+          aria-describedby="save-description"
+        >
           <h2 id="save-title">Save report?</h2>
-          <p id="save-description">This report will be read-only after you save it.</p>
+          <p id="save-description">
+            This report will be read-only after you save it.
+          </p>
           <form method="dialog" className="dialog-actions">
             <button autoFocus>Cancel</button>
-            <button type="button" className="accent" onClick={() => {
-              dialog.current?.close();
-              void editor.handleSubmit(submit)();
-            }}>Save report</button>
+            <button
+              type="button"
+              className="accent"
+              onClick={() => {
+                dialog.current?.close();
+                void editor.handleSubmit(submit)();
+              }}
+            >
+              Save report
+            </button>
           </form>
         </dialog>
       )}

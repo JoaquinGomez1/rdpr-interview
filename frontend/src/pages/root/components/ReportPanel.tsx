@@ -38,18 +38,32 @@ export function ReportPanel({
         <KeyImageList {...keyImages} readOnly={readOnly} />
       </div>
       <div className="report-actions">
-        {readOnly ? <Link className="accent new-report" to="/">New report</Link> : (
+        {readOnly ? (
+          <Link className="accent new-report" to="/">
+            New report
+          </Link>
+        ) : (
           <div
             className="save-report"
             tabIndex={validationMessage ? 0 : undefined}
-            aria-label={validationMessage ? "Save report unavailable" : undefined}
-            aria-describedby={validationMessage ? "report-validation" : undefined}
+            aria-label={
+              validationMessage ? "Save report unavailable" : undefined
+            }
+            aria-describedby={
+              validationMessage ? "report-validation" : undefined
+            }
           >
-            <button className="accent" disabled={!canSave || saving} onClick={submit}>
+            <button
+              className="accent"
+              disabled={!canSave || saving}
+              onClick={submit}
+            >
               {saving ? "Saving…" : "Save report"}
             </button>
             {validationMessage && (
-              <span id="report-validation" role="tooltip">{validationMessage}</span>
+              <span id="report-validation" role="tooltip">
+                {validationMessage}
+              </span>
             )}
           </div>
         )}

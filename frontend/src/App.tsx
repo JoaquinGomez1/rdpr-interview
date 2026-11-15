@@ -17,5 +17,7 @@ export default function App() {
 
 function ReportRoute() {
   const { reportId } = useParams();
-  return <RootPage key={reportId ?? "missing"} reportId={reportId ?? "invalid"} />;
+  return (
+    <RootPage key={reportId ?? "missing"} reportId={reportId ?? "invalid"} />
+  );
 }

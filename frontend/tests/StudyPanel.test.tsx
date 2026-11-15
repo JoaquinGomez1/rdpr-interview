@@ -11,9 +11,16 @@ test("requests the selected study view and displays its larger image", async () 
   const user = userEvent.setup();
   const onOpenView = vi.fn();
   const props = { keys: [], onOpenView, onAddKey: vi.fn() };
-  const { rerender } = render(<StudyPanel {...props} selection={{ view: 0 }} />, {
-    wrapper: ({ children }) => <StudyFixture><DndProvider backend={TestBackend}>{children}</DndProvider></StudyFixture>,
-  });
+  const { rerender } = render(
+    <StudyPanel {...props} selection={{ view: 0 }} />,
+    {
+      wrapper: ({ children }) => (
+        <StudyFixture>
+          <DndProvider backend={TestBackend}>{children}</DndProvider>
+        </StudyFixture>
+      ),
+    },
+  );
 
   const axialThumbnail = screen.getByRole("button", { name: "Axial slice" });
   await user.click(axialThumbnail);
@@ -22,9 +29,12 @@ test("requests the selected study view and displays its larger image", async () 
 
   rerender(<StudyPanel {...props} selection={{ view: 3 }} />);
   expect(axialThumbnail).toBePressed();
-  expect(screen.getByRole("button", { name: "Frontal chest" })).not.toBePressed();
+  expect(
+    screen.getByRole("button", { name: "Frontal chest" }),
+  ).not.toBePressed();
   expect(screen.getByRole("img", { name: /axial slice/i })).toHaveAttribute(
-    "src", "/study/view-4.png",
+    "src",
+    "/study/view-4.png",
   );
 });
 
@@ -33,8 +43,14 @@ test("requests adding the current study view as a key image", async () => {
   const onAddKey = vi.fn();
   render(
     <DndProvider backend={TestBackend}>
-      <StudyPanel selection={{ view: 4 }} keys={[]} onOpenView={vi.fn()} onAddKey={onAddKey} />
-    </DndProvider>, { wrapper: StudyFixture },
+      <StudyPanel
+        selection={{ view: 4 }}
+        keys={[]}
+        onOpenView={vi.fn()}
+        onAddKey={onAddKey}
+      />
+    </DndProvider>,
+    { wrapper: StudyFixture },
   );
 
   await user.click(screen.getByRole("button", { name: /add key image/i }));
