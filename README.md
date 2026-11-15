@@ -32,4 +32,13 @@ When NestJS finishes starting, open [http://localhost:3001](http://localhost:300
 
 Press `Ctrl+C` to stop the services. Run `docker compose down` to remove the containers while keeping the local data volumes.
 
+## Deploy with Supabase and Render
+
+Supabase hosts PostgreSQL. A Render Docker web service builds the root `Dockerfile` and serves React, the bundled study images, and the NestJS API at one public HTTPS URL.
+
+1. In a dedicated Supabase project for this demo, switch off **Enable Data API** in the **Data API** integration settings. NestJS connects directly to PostgreSQL and provides the application's API.
+2. In the Supabase dashboard, open **Connect** and copy the **Session pooler** connection string (port `5432`). Replace `[YOUR-PASSWORD]` with the database password, percent-encoding reserved URL characters, and append `?sslmode=verify-full` to the supplied URL if it has no query string. Keep the completed URL in your hosting service's secret environment settings.
+3. Push the branch you intend to deploy to a Git repository. In Render, create a **Web Service** from that repository, select the branch, choose **Docker**, and use `./Dockerfile` with the repository root as the build context. Set `DATABASE_URL` to the completed session pooler URL. You can set the health check path to `/api/study`.
+4. Deploy and open the service URL. NestJS creates its tables and seeds the mock image catalog at startup. Open the study, save a mock report with captioned key images, then open its report URL in a private window and confirm the saved text, captions, and order.
+
 See [assignment.md](assignment.md) for the brief and [decisions.md](decisions.md) for the design notes.
