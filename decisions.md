@@ -29,7 +29,7 @@ Compose publishes the app on port 3001 so local NestJS can use port 3000 at the 
 
 Use Vitest and React Testing Library for frontend component and hook unit tests. They cover study image selection, image load errors, adding key images, keyboard and drag reordering, and restoring the ordered draft from browser storage. Run `npm test` from `frontend` or use `npm run test:watch` while editing.
 
-Run `npm test` from `backend` for validation tests. Set `TEST_DATABASE_URL` to a disposable PostgreSQL database and run `npm run test:e2e` from `backend` to exercise the API with PostgreSQL.
+Run `npm test` from `backend` for unit tests and `npm run test:e2e` for HTTP integration tests. The assignment requires at least one API test, so Supertest posts directly to the NestJS report endpoint and checks for `422` responses when report text, key images, or a caption are missing. The database is stubbed because validation rejects these requests before saving.
 
 ## Scope and AI use
 
