@@ -1,7 +1,6 @@
 import { Link } from "react-router";
 import { KeyImageList } from "./KeyImageList";
 import type { KeyImageListProps } from "./KeyImageList";
-import type { ReportApiError } from "../reportApi";
 
 export function ReportPanel({
   report,
@@ -10,7 +9,6 @@ export function ReportPanel({
   saving,
   canSave,
   validationMessage,
-  saveError,
   readOnly = false,
   ...keyImages
 }: KeyImageListProps & {
@@ -20,7 +18,6 @@ export function ReportPanel({
   saving: boolean;
   canSave: boolean;
   validationMessage?: string;
-  saveError?: ReportApiError;
 }) {
   return (
     <section className="panel report" aria-labelledby="report-title">
@@ -55,13 +52,6 @@ export function ReportPanel({
               <span id="report-validation" role="tooltip">{validationMessage}</span>
             )}
           </div>
-        )}
-        {saveError && <p role="alert">{saveError.message}</p>}
-        {saveError?.requestId && (
-          <details>
-            <summary>Request ID</summary>
-            <code>{saveError.requestId}</code>
-          </details>
         )}
       </div>
     </section>

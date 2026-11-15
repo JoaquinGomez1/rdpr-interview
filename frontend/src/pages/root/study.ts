@@ -1,4 +1,5 @@
 import { createContext, useContext } from "react";
+import { showErrorToast } from "../../components/errorToast";
 
 export const keyImageLimit = 15;
 export const studyImageType = "study-image";
@@ -12,6 +13,10 @@ export const StudyImages = createContext<StudyImage[]>([]);
 
 export function useStudyImage(view: number) {
   return useContext(StudyImages).find((image) => image.view === view)!;
+}
+
+export function reportImageLoadError({ name, src }: StudyImage) {
+  showErrorToast({ message: `${name} could not load.` }, `study-image:${src}`);
 }
 
 export function keyImagePositions(keys: KeyImage[], view: number) {

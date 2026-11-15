@@ -1,5 +1,5 @@
 import { useDrag } from "react-dnd";
-import { keyImageType, useStudyImage } from "../study";
+import { keyImageType, reportImageLoadError, useStudyImage } from "../study";
 import type { KeyImage } from "../study";
 import { KeyImageCaption } from "./KeyImageCaption";
 
@@ -33,7 +33,8 @@ export function KeyImageCard({
     collect: (monitor) => monitor.isDragging(),
   });
   const position = index + 1;
-  const { name: viewName, src } = useStudyImage(view);
+  const studyImage = useStudyImage(view);
+  const { name: viewName, src } = studyImage;
 
   return (
     <li
@@ -62,7 +63,12 @@ export function KeyImageCard({
         aria-pressed={selected}
         aria-label={`View key image ${position}, ${viewName}`}
       >
-        <img src={src} alt="" draggable={false} />
+        <img
+          src={src}
+          alt=""
+          draggable={false}
+          onError={() => reportImageLoadError(studyImage)}
+        />
       </button>
       <div className="key-content">
         <strong>{position}. {viewName}</strong>

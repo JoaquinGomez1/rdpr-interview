@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes, useParams } from "react-router";
 import RootPage from "./pages/root/RootPage";
+import { Toaster } from "./components/ui/sonner";
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
         <Route path="/:reportId" element={<ReportRoute />} />
         <Route path="*" element={<ReportRoute />} />
       </Routes>
+      <Toaster />
     </BrowserRouter>
   );
 }

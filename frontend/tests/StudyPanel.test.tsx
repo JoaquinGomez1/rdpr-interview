@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { DndProvider } from "react-dnd";
 import { TestBackend } from "react-dnd-test-backend";
 import { expect, test, vi } from "vitest";
+import { Toaster } from "../src/components/ui/sonner";
 import { StudyPanel } from "../src/pages/root/components/StudyPanel";
 import { StudyFixture } from "./studyFixture";
 
@@ -41,13 +42,24 @@ test("requests adding the current study view as a key image", async () => {
   expect(onAddKey).toHaveBeenCalledWith(4);
 });
 
-test("shows an error when the selected image fails to load", () => {
+test("shows an error toast when the selected image fails to load", async () => {
   render(
     <DndProvider backend={TestBackend}>
-      <StudyPanel selection={{ view: 0 }} keys={[]} onOpenView={vi.fn()} onAddKey={vi.fn()} />
-    </DndProvider>, { wrapper: StudyFixture },
+      <StudyPanel
+        selection={{ view: 0 }}
+        keys={[]}
+        onOpenView={vi.fn()}
+        onAddKey={vi.fn()}
+      />
+      <Toaster />
+    </DndProvider>,
+    { wrapper: StudyFixture },
   );
 
   fireEvent.error(screen.getByRole("img", { name: /frontal chest/i }));
-  expect(screen.getByRole("alert")).toHaveTextContent("This view could not load.");
+  expect(await screen.findByText("Frontal chest could not load.")).toBeVisible();
+  expect(screen.getByText("Image unavailable")).toBeVisible();
+  fireEvent.click(screen.getByText("Error details"));
+  expect(screen.getByText("HTTP status")).toBeVisible();
+  expect(screen.getAllByText("Unavailable")).toHaveLength(2);
 });

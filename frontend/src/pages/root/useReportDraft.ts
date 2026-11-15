@@ -1,25 +1,30 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import type { ResolverResult } from "react-hook-form";
+import { showErrorToast } from "../../components/errorToast";
 import type { Draft, Study } from "./reportApi";
 
 const legacyKeys = ["radpair-report-draft", "radpair-annotation-experiment"];
 
 function readDraft(storageKey: string, study: Study): Draft | null {
-  try {
-    const saved = localStorage.getItem(storageKey) ??
-      legacyKeys.map((key) => localStorage.getItem(key)).find(Boolean);
-    if (!saved) return null;
-    const { report, keys } = JSON.parse(saved) as Draft;
-    if (typeof report !== "string" || !Array.isArray(keys)) return null;
-    return {
-      report,
-      keys: keys.filter(({ view }) => study.images.some((image) => image.view === view))
-        .map(({ id, view, caption }) => ({ id, view, caption: typeof caption === "string" ? caption : "" })),
-    };
-  } catch {
-    return null;
+  const saved =
+    localStorage.getItem(storageKey) ??
+    legacyKeys.map((key) => localStorage.getItem(key)).find(Boolean);
+  if (!saved) return null;
+  const { report, keys } = JSON.parse(saved) as Draft;
+  if (typeof report !== "string" || !Array.isArray(keys)) {
+    throw new Error("Invalid stored draft");
   }
+  return {
+    report,
+    keys: keys
+      .filter(({ view }) => study.images.some((image) => image.view === view))
+      .map(({ id, view, caption }) => ({
+        id,
+        view,
+        caption: typeof caption === "string" ? caption : "",
+      })),
+  };
 }
 
 const emptyDraft: Draft = { report: "", keys: [] };
@@ -46,9 +51,24 @@ function resolveDraft(draft: Draft): ResolverResult<Draft> {
 
 export function useReportDraft(study: Study) {
   const storageKey = `radpair-report-draft:${study.draftId}`;
-  const [initialDraft] = useState(() => readDraft(storageKey, study) ?? emptyDraft);
-  const { watch, getValues, setValue, trigger, handleSubmit, formState: { errors, isValid, isDirty } } =
-    useForm<Draft>({ defaultValues: initialDraft, resolver: resolveDraft });
+  const [{ initialDraft, restoreFailed }] = useState(() => {
+    try {
+      return {
+        initialDraft: readDraft(storageKey, study) ?? emptyDraft,
+        restoreFailed: false,
+      };
+    } catch {
+      return { initialDraft: emptyDraft, restoreFailed: true };
+    }
+  });
+  const {
+    watch,
+    getValues,
+    setValue,
+    trigger,
+    handleSubmit,
+    formState: { errors, isValid, isDirty },
+  } = useForm<Draft>({ defaultValues: initialDraft, resolver: resolveDraft });
   const report = watch("report");
   const keys = watch("keys");
   const [storageError, setStorageError] = useState(false);
@@ -57,6 +77,15 @@ export function useReportDraft(study: Study) {
   useEffect(() => {
     void trigger();
   }, [trigger]);
+
+  useEffect(() => {
+    if (restoreFailed) {
+      showErrorToast(
+        { message: "The draft could not be restored from this device." },
+        "restore-draft",
+      );
+    }
+  }, [restoreFailed]);
 
   function setDraft(update: Draft | ((current: Draft) => Draft)) {
     const current = getValues();
@@ -72,7 +101,7 @@ export function useReportDraft(study: Study) {
       if (dirty) {
         localStorage.setItem(storageKey, JSON.stringify({ report, keys }));
         for (const key of legacyKeys) localStorage.removeItem(key);
-      } else {
+      } else if (!restoreFailed) {
         localStorage.removeItem(storageKey);
       }
     } catch {
@@ -80,14 +109,26 @@ export function useReportDraft(study: Study) {
     }
     // oxlint-disable-next-line react/set-state-in-effect
     setStorageError(failed);
-  }, [dirty, report, keys, storageKey]);
+  }, [dirty, report, keys, restoreFailed, storageKey]);
+
+  useEffect(() => {
+    if (storageError) {
+      showErrorToast(
+        { message: "The draft could not be saved on this device." },
+        "store-draft",
+      );
+    }
+  }, [storageError]);
 
   function clearDraft() {
     try {
       localStorage.removeItem(storageKey);
       for (const key of legacyKeys) localStorage.removeItem(key);
     } catch {
-      // The report has already been saved to the server.
+      showErrorToast(
+        { message: "The report was saved, but the local draft could not be cleared." },
+        "clear-draft",
+      );
     }
   }
 

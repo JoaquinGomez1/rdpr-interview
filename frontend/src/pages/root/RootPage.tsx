@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { toast } from "sonner";
+import { showErrorToast } from "../../components/errorToast";
 import { ReportPanel } from "./components/ReportPanel";
 import { StudyPanel } from "./components/StudyPanel";
 import { keyImageLimit, keyImagePositions, StudyImages } from "./study";
@@ -12,18 +14,30 @@ import "./RootPage.css";
 
 export default function RootPage({ reportId }: { reportId?: string }) {
   const [result, setResult] = useState<Study | SavedReport>();
-  const [error, setError] = useState<string>();
+  const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    const loading = reportId ? loadReport(reportId, controller.signal) : loadStudy(controller.signal);
+    const toastId = `load-report:${reportId ?? "study"}:${attempt}`;
+    const loading = reportId
+      ? loadReport(reportId, controller.signal)
+      : loadStudy(controller.signal);
     loading.then(setResult, (error) => {
       if (!controller.signal.aborted) {
-        setError(error instanceof ReportApiError ? error.message : "The reporting service could not be reached.");
+        setLoadFailed(true);
+        showErrorToast(
+          error instanceof ReportApiError
+            ? error
+            : { message: "The reporting service could not be reached. Try again." },
+          toastId,
+        );
       }
     });
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      toast.dismiss(toastId);
+    };
   }, [attempt, reportId]);
 
   if (result && result.images.length) {
@@ -39,12 +53,24 @@ export default function RootPage({ reportId }: { reportId?: string }) {
     <main className="masthead">
       <div>
         <h1>Study reporting</h1>
-        {error ? (
-          <>
-            <p role="alert">{error}</p>
-            <button onClick={() => { setError(undefined); setAttempt(attempt + 1); }}>Retry</button>
-          </>
-        ) : <p role="status">{result ? "No study images available." : reportId ? "Loading report…" : "Loading study…"}</p>}
+        {loadFailed ? (
+          <button
+            onClick={() => {
+              setLoadFailed(false);
+              setAttempt((current) => current + 1);
+            }}
+          >
+            Retry
+          </button>
+        ) : (
+          <p role="status">
+            {result
+              ? "No study images available."
+              : reportId
+                ? "Loading report…"
+                : "Loading study…"}
+          </p>
+        )}
         {reportId && <Link to="/">New report</Link>}
       </div>
     </main>
@@ -66,19 +92,23 @@ function ReportWorkspace({ draft, images, editor }: {
   const [selection, setSelection] = useState<ImageSelection>({ view: images[0].view });
   const [announcement, setAnnouncement] = useState("");
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<ReportApiError>();
   const { keys, report } = draft;
 
   async function submit(validDraft: Draft) {
     if (!editor || saving) return;
     setSaving(true);
-    setSaveError(undefined);
     try {
       const saved = await saveReport(validDraft);
+      toast.dismiss("save-report");
       editor.clearDraft();
       navigate(`/${saved.id}`, { replace: true });
     } catch (error) {
-      setSaveError(error instanceof ReportApiError ? error : new ReportApiError("The report could not be submitted. Try again.", null));
+      showErrorToast(
+        error instanceof ReportApiError
+          ? error
+          : { message: "The report could not be submitted. Try again." },
+        "save-report",
+      );
     } finally {
       setSaving(false);
     }
@@ -178,7 +208,6 @@ function ReportWorkspace({ draft, images, editor }: {
           canSave={editor?.isValid ?? false}
           validationMessage={editor?.validationMessage}
           readOnly={!editor}
-          saveError={saveError}
         />
       </main>
       {editor && (

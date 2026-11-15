@@ -1,0 +1,28 @@
+[data-sonner-toaster] .app-toast {
+  --normal-bg: #19242e;
+  --normal-border: #65444a;
+  --normal-text: #ffe5e8;
+}
+
+.error-details {
+  margin-top: 0.375rem;
+}
+
+.error-details summary {
+  width: fit-content;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.error-details dl {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0.25rem 0.75rem;
+  margin: 0.5rem 0 0;
+}
+
+.error-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useStudyImage } from "../study";
+import { reportImageLoadError, useStudyImage } from "../study";
 import type { ImageSelection } from "../study";
 
 export function StudyViewer({
@@ -21,15 +21,17 @@ export function StudyViewer({
       </div>
       <div className="image-frame">
         {failedSelection === selection && (
-          <p className="image-error" role="alert">
-            This view could not load.
-          </p>
+          <p className="image-error">Image unavailable</p>
         )}
         <img
           key={view}
           src={image.src}
           alt={`AI-generated mock radiology image, ${image.name.toLowerCase()}`}
-          onError={() => setFailedSelection(selection)}
+          hidden={failedSelection === selection}
+          onError={() => {
+            setFailedSelection(selection);
+            reportImageLoadError(image);
+          }}
         />
       </div>
     </div>

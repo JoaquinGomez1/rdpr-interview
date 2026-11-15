@@ -1,5 +1,5 @@
 import { useDrag } from "react-dnd";
-import { studyImageType, useStudyImage } from "../study";
+import { reportImageLoadError, studyImageType, useStudyImage } from "../study";
 
 export function StudyThumbnail({
   index,
@@ -28,7 +28,12 @@ export function StudyThumbnail({
       aria-pressed={selected}
       onClick={onOpen}
     >
-      <img src={image.src} alt="" draggable={false} />
+      <img
+        src={image.src}
+        alt=""
+        draggable={false}
+        onError={() => reportImageLoadError(image)}
+      />
       <span>{image.name}</span>
     </button>
   );
