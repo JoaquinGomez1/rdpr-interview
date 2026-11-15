@@ -1,9 +1,10 @@
 import type { KeyImage, StudyImage } from "./study";
+import { isCreatedReport, isLoadedReport, isStudy } from "./reportContract";
+import type { ReportPayload, Study } from "./reportContract";
+
+export type { Study };
 
 export type Draft = { report: string; keys: KeyImage[] };
-type ReportRequest = { report: { message: string }; keys: KeyImage[] };
-type ApiReport = { report: { message: string }; keys: KeyImage[] };
-export type Study = { draftId: string; images: StudyImage[] };
 export type SavedReport = Draft & { images: StudyImage[] };
 
 export class ReportApiError extends Error {
@@ -17,7 +18,11 @@ export class ReportApiError extends Error {
   }
 }
 
-async function request<T>(url: string, options?: RequestInit): Promise<T> {
+async function request<T>(
+  url: string,
+  isPayload: (value: unknown) => value is T,
+  options?: RequestInit,
+): Promise<T> {
   const response = await fetch(url, options);
   const requestId = response.headers.get("X-Request-Id");
   if (!response.ok) {
@@ -34,29 +39,41 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
     );
   }
   try {
-    return await response.json();
+    const payload: unknown = await response.json();
+    if (isPayload(payload)) return payload;
   } catch {
-    throw new ReportApiError(
-      "The reporting service returned an unreadable response. Try again.",
-      response.status,
-      requestId,
-    );
+    // Invalid JSON and invalid payloads use the same response error.
   }
+  throw new ReportApiError(
+    "The reporting service returned an unreadable response. Try again.",
+    response.status,
+    requestId,
+  );
 }
 
 export function loadStudy(signal: AbortSignal) {
-  return request<Study>("/api/study", { signal });
+  return request("/api/study", isStudy, { signal });
 }
 
 export function saveReport(draft: Draft) {
-  return request<ApiReport & { id: string }>("/api/study/report", {
+  return request("/api/study/report", isCreatedReport, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ report: { message: draft.report }, keys: draft.keys } satisfies ReportRequest),
+    body: JSON.stringify({
+      report: { message: draft.report },
+      keys: draft.keys,
+    } satisfies ReportPayload),
   }).then(({ report, keys, id }) => ({ report: report.message, keys, id }));
 }
 
 export function loadReport(id: string, signal: AbortSignal) {
-  return request<ApiReport & { images: StudyImage[] }>(`/api/study/report/${encodeURIComponent(id)}`, { signal })
-    .then(({ report, keys, images }) => ({ report: report.message, keys, images }));
+  return request(
+    `/api/study/report/${encodeURIComponent(id)}`,
+    isLoadedReport,
+    { signal },
+  ).then(({ report, keys, images }) => ({
+    report: report.message,
+    keys,
+    images,
+  }));
 }

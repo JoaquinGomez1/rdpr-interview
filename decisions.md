@@ -40,6 +40,7 @@ I used AI to compare deployment options and draft the API and data model. I reje
 ## API report payload
 
 Send key image references and captions without image data. Represent report text as `report.message` so the report object can gain additional fields later.
+Check successful API response shapes before updating the screen or clearing a draft. Restore legacy draft entries with unique UUIDs so their captions and order can carry over into a saved report.
 Run the local API in watch mode so validation changes stay in sync with Vite during development.
 
 ## Backend structure and error logging

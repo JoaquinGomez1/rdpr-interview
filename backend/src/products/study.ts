@@ -1,12 +1,15 @@
 export const uuidPattern = /^[\da-f]{8}-(?:[\da-f]{4}-){3}[\da-f]{12}$/i;
-export type StudyImage = {
+export type PublicStudyImage = {
   view: number;
   name: string;
   src: string;
-  checksum: string;
 };
+export type StudyImage = PublicStudyImage & { checksum: string };
 export type KeyImage = { id: string; view: number; caption: string };
 export type Report = { report: { message: string }; keys: KeyImage[] };
+export type StudyResponse = { draftId: string; images: PublicStudyImage[] };
+export type CreatedReportResponse = Report & { id: string };
+export type SavedReportResponse = Report & { images: PublicStudyImage[] };
 
 export class ReportValidationError extends Error {}
 

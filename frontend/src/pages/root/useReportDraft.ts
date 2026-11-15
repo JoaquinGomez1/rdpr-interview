@@ -3,6 +3,8 @@ import { useForm } from "react-hook-form";
 import type { ResolverResult } from "react-hook-form";
 import { showErrorToast } from "../../components/errorToast";
 import type { Draft, Study } from "./reportApi";
+import { isUuid, isView } from "./reportContract";
+import { keyImageLimit } from "./study";
 
 const legacyKeys = ["radpair-report-draft", "radpair-annotation-experiment"];
 
@@ -11,20 +13,32 @@ function readDraft(storageKey: string, study: Study): Draft | null {
     localStorage.getItem(storageKey) ??
     legacyKeys.map((key) => localStorage.getItem(key)).find(Boolean);
   if (!saved) return null;
-  const { report, keys } = JSON.parse(saved) as Draft;
-  if (typeof report !== "string" || !Array.isArray(keys)) {
+  const parsed: unknown = JSON.parse(saved);
+  if (
+    !parsed || typeof parsed !== "object" ||
+    !("report" in parsed) || typeof parsed.report !== "string" ||
+    !("keys" in parsed) || !Array.isArray(parsed.keys)
+  ) {
     throw new Error("Invalid stored draft");
   }
-  return {
-    report,
-    keys: keys
-      .filter(({ view }) => study.images.some((image) => image.view === view))
-      .map(({ id, view, caption }) => ({
-        id,
-        view,
-        caption: typeof caption === "string" ? caption : "",
-      })),
-  };
+  const views = new Set(study.images.map(({ view }) => view));
+  const ids = new Set<string>();
+  const keys: Draft["keys"] = [];
+  for (const entry of parsed.keys as unknown[]) {
+    if (
+      !entry || typeof entry !== "object" || !("view" in entry) ||
+      !isView(entry.view) || !views.has(entry.view)
+    ) continue;
+    const storedId = "id" in entry && isUuid(entry.id) ? entry.id.toLowerCase() : null;
+    const id = storedId && !ids.has(storedId) ? storedId : crypto.randomUUID();
+    ids.add(id);
+    keys.push({
+      id,
+      view: entry.view,
+      caption: "caption" in entry && typeof entry.caption === "string" ? entry.caption : "",
+    });
+  }
+  return { report: parsed.report, keys };
 }
 
 const emptyDraft: Draft = { report: "", keys: [] };
@@ -33,19 +47,34 @@ function resolveDraft(draft: Draft): ResolverResult<Draft> {
   const messages: string[] = [];
   if (draft.report.trim().length < 10) {
     messages.push("Enter at least 10 characters of report text.");
-  } else if (draft.report.length > 16_000 || /[\uD800-\uDFFF\0]/u.test(draft.report)) {
+  } else if (
+    draft.report.length > 16_000 ||
+    /[\uD800-\uDFFF\0]/u.test(draft.report)
+  ) {
     messages.push("Enter valid report text of up to 16,000 characters.");
   }
   if (!draft.keys.length) messages.push("Add at least one key image.");
+  if (draft.keys.length > keyImageLimit) {
+    messages.push(`Remove key images to reach the limit of ${keyImageLimit}.`);
+  }
   draft.keys.forEach(({ caption }, index) => {
     if (!caption.trim()) {
       messages.push(`Add a caption for key image ${index + 1}.`);
     } else if (caption.length > 160 || /[\r\n\uD800-\uDFFF\0]/u.test(caption)) {
-      messages.push(`Caption ${index + 1} must be one line of up to 160 characters.`);
+      messages.push(
+        `Caption ${index + 1} must be one line of up to 160 characters.`,
+      );
     }
   });
   return messages.length
-    ? { values: {}, errors: { root: { validation: { type: "validate", message: messages.join(" ") } } } }
+    ? {
+        values: {},
+        errors: {
+          root: {
+            validation: { type: "validate", message: messages.join(" ") },
+          },
+        },
+      }
     : { values: draft, errors: {} };
 }
 
@@ -90,8 +119,10 @@ export function useReportDraft(study: Study) {
   function setDraft(update: Draft | ((current: Draft) => Draft)) {
     const current = getValues();
     const next = typeof update === "function" ? update(current) : update;
-    if (next.report !== current.report) setValue("report", next.report, { shouldDirty: true });
-    if (next.keys !== current.keys) setValue("keys", next.keys, { shouldDirty: true });
+    if (next.report !== current.report)
+      setValue("report", next.report, { shouldDirty: true });
+    if (next.keys !== current.keys)
+      setValue("keys", next.keys, { shouldDirty: true });
     void trigger();
   }
 
@@ -133,7 +164,13 @@ export function useReportDraft(study: Study) {
   }
 
   return {
-    draft: { report, keys }, setDraft, storageError, dirty, clearDraft, handleSubmit,
-    isValid, validationMessage: errors.root?.validation?.message,
+    draft: { report, keys },
+    setDraft,
+    storageError,
+    dirty,
+    clearDraft,
+    handleSubmit,
+    isValid,
+    validationMessage: errors.root?.validation?.message,
   };
 }

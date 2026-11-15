@@ -2,6 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { ProductRepository } from './product.repository.js';
 import { uuidPattern, validateReport } from './study.js';
+import type {
+  CreatedReportResponse,
+  SavedReportResponse,
+  StudyResponse,
+} from './study.js';
 
 @Injectable()
 export class ProductService {
@@ -15,20 +20,20 @@ export class ProductService {
       .map(({ view, name, src }) => ({ view, name, src }));
   }
 
-  loadStudy(browserId: string) {
+  loadStudy(browserId: string): StudyResponse {
     const draftId = createHash('sha256')
       .update(`draft:${browserId}`)
       .digest('hex');
     return { draftId, images: this.studyImages() };
   }
 
-  async loadReport(id: string) {
+  async loadReport(id: string): Promise<SavedReportResponse | null> {
     if (!uuidPattern.test(id)) return null;
     const report = await this.repository.load(id);
     return report && { ...report, images: this.studyImages() };
   }
 
-  async saveReport(body: unknown) {
+  async saveReport(body: unknown): Promise<CreatedReportResponse> {
     const report = validateReport(body, this.repository.studyImages());
     const id = randomUUID();
     await this.repository.save(id, report);
