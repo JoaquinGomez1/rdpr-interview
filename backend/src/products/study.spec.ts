@@ -1,5 +1,7 @@
+import { ValidationPipe } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
-import { createReportBodyPipe } from './create-report.dto.js';
+import { requestValidationOptions } from '../http/request-validation.js';
+import { CreateReportDto } from './create-report.dto.js';
 import { prepareReport } from './study.js';
 
 const images = [
@@ -13,8 +15,12 @@ function key(view: number, caption = 'Finding') {
 
 describe('report validation', () => {
   const report = { message: '0123456789' };
+  const validationPipe = new ValidationPipe(requestValidationOptions);
   const validate = (payload: unknown) =>
-    createReportBodyPipe.transform(payload, { type: 'body' });
+    validationPipe.transform(payload, {
+      type: 'body',
+      metatype: CreateReportDto,
+    });
 
   it('accepts the nested report message and the first study view', async () => {
     const payload = {

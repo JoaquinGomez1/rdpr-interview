@@ -1,4 +1,3 @@
-import { UnprocessableEntityException, ValidationPipe } from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
   ArrayNotEmpty,
@@ -10,7 +9,6 @@ import {
   ValidateBy,
   ValidateNested,
 } from 'class-validator';
-import type { ValidationError } from 'class-validator';
 import { uuidPattern } from './study.js';
 
 const reportMessage =
@@ -80,32 +78,3 @@ export class CreateReportDto {
   @Type(() => KeyImageDto)
   keys: KeyImageDto[];
 }
-
-function firstValidationMessage(
-  errors: ValidationError[],
-  position?: number,
-): string | undefined {
-  for (const error of errors) {
-    const entryPosition = /^\d+$/.test(error.property)
-      ? Number(error.property) + 1
-      : position;
-    const message =
-      Object.values(error.constraints ?? {})[0] ??
-      firstValidationMessage(error.children ?? [], entryPosition);
-    if (message)
-      return position === undefined
-        ? message
-        : message.replace('{position}', String(position));
-  }
-}
-
-export const createReportBodyPipe = new ValidationPipe({
-  expectedType: CreateReportDto,
-  transform: true,
-  whitelist: true,
-  validationError: { target: false, value: false },
-  exceptionFactory: (errors: ValidationError[]) =>
-    new UnprocessableEntityException(
-      firstValidationMessage(errors) ?? 'Invalid report payload.',
-    ),
-});

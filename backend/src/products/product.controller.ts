@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { CreateReportDto, createReportBodyPipe } from './create-report.dto.js';
+import { CreateReportDto } from './create-report.dto.js';
 import { ProductService } from './product.service.js';
 import { ReportValidationError, uuidPattern } from './study.js';
 
@@ -65,7 +65,7 @@ export class ProductController {
 
   @Post('report')
   @Header('Cache-Control', 'no-store')
-  async save(@Body(createReportBodyPipe) body: CreateReportDto) {
+  async save(@Body() body: CreateReportDto) {
     try {
       return await this.products.saveReport(body);
     } catch (error) {
