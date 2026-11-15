@@ -19,6 +19,7 @@ Compose publishes the app on port 3001 so local NestJS can use port 3000 at the 
 **Questions I raised:** How does a reviewer find the study when they open the shared link? Does the URL need a study ID or a study list? Should reviewers see the report I worked on or start with a fresh one? Without a login, how can the app remember their work when they return?
 
 - The root opens a study preloaded with mock images. NestJS issues a persistent browser UUID in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production) to identify the local draft. Each saved report gets a separate UUID so the browser can create multiple reports and share each independently.
+- Proposed simplification: everyone uses the same bundled study, with no personal image uploads. Use a fixed study key in browser-local storage to restore drafts without a browser identity cookie. Preserve existing local drafts if the storage key changes.
 - Use the five bundled mock PNGs for the fixed study. NestJS computes their SHA-256 checksums at startup and seeds the image catalog in PostgreSQL.
 - Cap the report at 15 key images to keep it easy to scan. Show the count, explain the limit when reached, and let users edit or remove existing entries. PostgreSQL stores image references, so the cap controls report length.
 - Allow the same study image to appear more than once so it can support different findings. Each addition opens a new entry with a blank caption. The Add key image tooltip lists the positions where the current image already appears.
