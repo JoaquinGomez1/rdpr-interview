@@ -1,9 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { ProductRepository } from './product.repository.js';
-import { uuidPattern, validateReport } from './study.js';
+import { prepareReport, uuidPattern } from './study.js';
 import type {
   CreatedReportResponse,
+  Report,
   SavedReportResponse,
   StudyResponse,
 } from './study.js';
@@ -33,8 +34,8 @@ export class ProductService {
     return report && { ...report, images: this.studyImages() };
   }
 
-  async saveReport(body: unknown): Promise<CreatedReportResponse> {
-    const report = validateReport(body, this.repository.studyImages());
+  async saveReport(body: Report): Promise<CreatedReportResponse> {
+    const report = prepareReport(body, this.repository.studyImages());
     const id = randomUUID();
     await this.repository.save(id, report);
     return { ...report, id };

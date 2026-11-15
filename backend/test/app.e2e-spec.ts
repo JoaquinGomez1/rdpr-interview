@@ -70,16 +70,17 @@ describe('Report API', () => {
     const api = request(app.getHttpServer());
     await api.get(`${path}/invalid`).expect(404);
     await api.get(`${path}/${randomUUID()}`).expect(404);
-    const key = { id: randomUUID(), view: 0, caption: '' };
+    const key = { id: randomUUID(), view: 0, caption: 'Finding' };
     const report = { message: 'Study findings' };
-    await api
+    const short = await api
       .post(path)
-      .send({ report: { message: 'Short' }, keys: [key] })
+      .send({ report: { message: ' 123456789 ' }, keys: [key] })
       .expect(422);
+    expect(short.body.message).toContain('10 to 16,000 characters');
     await api.post(path).send({ report, keys: [] }).expect(422);
     await api
       .post(path)
-      .send({ report, keys: [key] })
+      .send({ report, keys: [{ ...key, caption: '' }] })
       .expect(422);
     const unknown = await api
       .post(path)

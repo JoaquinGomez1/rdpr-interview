@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { validateReport } from './study.js';
+import { createReportBodyPipe } from './create-report.dto.js';
+import { prepareReport } from './study.js';
 
 const images = [
   { view: 0, name: 'First', src: '/first', checksum: 'same-image' },
@@ -12,32 +13,55 @@ function key(view: number, caption = 'Finding') {
 
 describe('report validation', () => {
   const report = { message: '0123456789' };
+  const validate = (payload: unknown) =>
+    createReportBodyPipe.transform(payload, { type: 'body' });
 
-  it('accepts the nested report message and the first study view', () => {
+  it('accepts the nested report message and the first study view', async () => {
     const payload = {
       report: { message: 'Example study finding' },
       keys: [key(0)],
     };
-    expect(validateReport(payload, images)).toEqual(payload);
+    await expect(validate(payload)).resolves.toEqual(payload);
   });
 
   it.each(['', '             ', ' 123456789 '])(
     'rejects short report text %j',
-    (message) => {
-      expect(() =>
-        validateReport({ report: { message }, keys: [key(0)] }, images),
-      ).toThrow('10 to 16,000 characters');
+    async (message) => {
+      await expect(
+        validate({ report: { message }, keys: [key(0)] }),
+      ).rejects.toThrow('10 to 16,000 characters');
     },
   );
 
-  it('requires at least one key image and a caption on every entry', () => {
-    expect(() => validateReport({ report, keys: [] }, images)).toThrow(
+  it('requires at least one key image and a caption on every entry', async () => {
+    await expect(validate({ report, keys: [] })).rejects.toThrow(
       'at least one key image',
     );
-    expect(() =>
-      validateReport({ report, keys: [key(0), key(0, '  ')] }, images),
-    ).toThrow('Caption 2 is required');
+    await expect(
+      validate({ report, keys: [key(0), key(0, '  ')] }),
+    ).rejects.toThrow('Caption 2 is required');
   });
+
+  it('rejects malformed nested values and case-insensitive duplicate IDs', async () => {
+    const first = key(0);
+    for (const payload of [
+      [],
+      { report: [report], keys: [first] },
+      { report, keys: [[first]] },
+      { report, keys: [null] },
+      { report, keys: [{ ...first, view: '0' }] },
+      { report, keys: [{ ...first, id: 'invalid' }] },
+    ]) {
+      await expect(validate(payload)).rejects.toMatchObject({ status: 422 });
+    }
+    await expect(
+      validate({ report, keys: [first, { ...first, id: first.id.toUpperCase() }] }),
+    ).rejects.toThrow('unique entry IDs');
+  });
+});
+
+describe('report preparation', () => {
+  const report = { message: '0123456789' };
 
   it('keeps the first matching caption and preserves order and distinct captions', () => {
     const keys = [
@@ -46,7 +70,7 @@ describe('report validation', () => {
       key(0, 'Other'),
       key(0, 'finding'),
     ];
-    expect(validateReport({ report, keys }, images).keys).toEqual([
+    expect(prepareReport({ report, keys }, images).keys).toEqual([
       keys[0],
       keys[2],
       keys[3],
@@ -55,9 +79,9 @@ describe('report validation', () => {
 
   it('applies the limit after merging', () => {
     const keys = Array.from({ length: 16 }, () => key(0, 'Same finding'));
-    expect(validateReport({ report, keys }, images).keys).toEqual([keys[0]]);
+    expect(prepareReport({ report, keys }, images).keys).toEqual([keys[0]]);
     expect(() =>
-      validateReport(
+      prepareReport(
         {
           report,
           keys: keys.map((entry, index) => ({
