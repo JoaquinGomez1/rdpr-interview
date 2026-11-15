@@ -1,4 +1,6 @@
-# Radpair reporting challenge
+# RDPR reporting challenge
+
+https://rdpr-interview.onrender.com/
 
 ## Run NestJS and Vite locally
 
@@ -36,13 +38,6 @@ Press `Ctrl+C` to stop the services. Run `docker compose down` to remove the con
 
 Supabase hosts PostgreSQL. A Render Docker web service builds the root `Dockerfile` and serves React, the bundled study images, and the NestJS API at one public HTTPS URL.
 
-1. In a dedicated Supabase project for this demo, switch off **Enable Data API** in the **Data API** integration settings. NestJS connects directly to PostgreSQL and provides the application's API.
-2. In the Supabase dashboard, open **Connect**, click the **Direct** tab labeled **Connection string**, and choose **Session pooler** as the connection method. Copy the URI (port `5432`). Replace `[YOUR-PASSWORD]` with the database password, percent-encoding reserved URL characters, and append `?sslmode=verify-full` to the supplied URL if it has no query string. Keep the completed URL in your hosting service's secret environment settings.
-3. Push the branch you intend to deploy to a Git repository. In the separate [Render dashboard](https://dashboard.render.com/), select **New → Web Service → Git Provider** and connect the repository. Select the branch, choose **Docker**, and use `./Dockerfile` with the repository root as the build context. Set `DATABASE_URL` to the completed session pooler URL. You can set the health check path to `/api/study`.
-4. Deploy and open the service URL. NestJS creates its tables and seeds the mock image catalog at startup. Open the study, save a mock report with captioned key images, then open its report URL in a private window and confirm the saved text, captions, and order.
-
-To change the database password, open **Database → Settings** in Supabase and choose **Reset database password**. Update `DATABASE_URL` in Render with the new password and redeploy the service.
-
-If Render logs `connect ENETUNREACH` with an IPv6 address on port `5432`, copy the **Session pooler** URI again and update `DATABASE_URL`. The session pooler uses an IPv4 `*.pooler.supabase.com` host and a `postgres.<project-ref>` username.
+Url can be found at: https://rdpr-interview.onrender.com/
 
 See [assignment.md](assignment.md) for the brief and [decisions.md](decisions.md) for the design notes.
