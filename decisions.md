@@ -41,3 +41,7 @@ I used AI to compare deployment options and draft the API and data model. I reje
 
 Send key image references and captions without image data. Represent report text as `report.message` so the report object can gain additional fields later.
 Run the local API in watch mode so validation changes stay in sync with Vite during development.
+
+## Backend structure and error logging
+
+Keep the app module focused on wiring. In `products`, the controller handles HTTP, the service handles report rules, and the repository owns database access and invokes the separate study seed. Generate a new `X-Request-Id` for every request and return it to the client so a reported failure can be matched to its PostgreSQL log entry. Store the error message, path, timestamp, HTTP method, and status.

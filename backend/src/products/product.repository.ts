@@ -1,20 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Pool } from 'pg';
-import { readStudyImages, validateReport } from './study.js';
+import { Inject, Injectable } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
+import { Database } from '../database.js';
 import type { Report, StudyImage } from './study.js';
+import { seedStudyImages } from './study.seed.js';
 
 @Injectable()
-export class AppService implements OnModuleInit, OnModuleDestroy {
-  private readonly db = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    connectionTimeoutMillis: 5_000,
-  });
+export class ProductRepository implements OnModuleInit {
   private images: StudyImage[] = [];
 
+  constructor(@Inject(Database) private readonly db: Database) {}
+
   async onModuleInit() {
-    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required.');
-    this.images = await readStudyImages();
     await this.db.query(`
       SELECT pg_advisory_xact_lock(718135291);
       CREATE TABLE IF NOT EXISTS study_images (
@@ -44,24 +40,11 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
         UNIQUE (report_id, id)
       );
     `);
-    await this.db.query(
-      `
-      INSERT INTO study_images (view, name, src, checksum)
-      SELECT view, name, src, checksum
-      FROM jsonb_to_recordset($1::jsonb) AS image(view integer, name text, src text, checksum text)
-      ON CONFLICT (view) DO UPDATE
-      SET name = EXCLUDED.name, src = EXCLUDED.src, checksum = EXCLUDED.checksum
-    `,
-      [JSON.stringify(this.images)],
-    );
-  }
-
-  async onModuleDestroy() {
-    await this.db.end();
+    this.images = await seedStudyImages(this.db);
   }
 
   studyImages() {
-    return this.images.map(({ view, name, src }) => ({ view, name, src }));
+    return this.images;
   }
 
   async load(reportId: string) {
@@ -78,8 +61,7 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
     return rows[0] ?? null;
   }
 
-  async save(reportId: string, body: unknown): Promise<Report> {
-    const report = validateReport(body, this.images);
+  async save(reportId: string, report: Report) {
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
@@ -103,7 +85,6 @@ export class AppService implements OnModuleInit, OnModuleDestroy {
         ],
       );
       await client.query('COMMIT');
-      return report;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;

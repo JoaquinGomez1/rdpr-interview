@@ -1,30 +1,18 @@
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { Logger } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
 import { resolve } from 'node:path';
 import { AppModule } from './app.module.js';
-import { publicDir, uuidPattern } from './study.js';
+import { requestIdMiddleware } from './http/request-id.middleware.js';
+import { uuidPattern } from './products/study.js';
+import { publicDir } from './public-dir.js';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.setGlobalPrefix('api');
   app.enableShutdownHooks();
-  const logger = new Logger('HTTP');
-  app.use(
-    '/api',
-    (request: Request, response: Response, next: NextFunction) => {
-      const id = randomUUID();
-      response.setHeader('X-Request-Id', id);
-      response.on('finish', () => {
-        logger.log(
-          `${id} ${request.method} ${request.path} ${response.statusCode}`,
-        );
-      });
-      next();
-    },
-  );
+  app.use(requestIdMiddleware);
+
   if (process.env.FRONTEND_DIR) {
     app.useStaticAssets(publicDir);
     app.use((request: Request, response: Response, next: NextFunction) => {
@@ -40,6 +28,7 @@ async function bootstrap() {
   } else {
     app.useStaticAssets(resolve(publicDir, 'study'), { prefix: '/study' });
   }
+
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');
 }
 await bootstrap();

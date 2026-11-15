@@ -14,19 +14,29 @@ describe('report validation', () => {
   const report = { message: '0123456789' };
 
   it('accepts the nested report message and the first study view', () => {
-    const payload = { report: { message: 'Example study finding' }, keys: [key(0)] };
+    const payload = {
+      report: { message: 'Example study finding' },
+      keys: [key(0)],
+    };
     expect(validateReport(payload, images)).toEqual(payload);
   });
 
-  it.each(['', '             ', ' 123456789 '])('rejects short report text %j', (message) => {
-    expect(() => validateReport({ report: { message }, keys: [key(0)] }, images))
-      .toThrow('10 to 16,000 characters');
-  });
+  it.each(['', '             ', ' 123456789 '])(
+    'rejects short report text %j',
+    (message) => {
+      expect(() =>
+        validateReport({ report: { message }, keys: [key(0)] }, images),
+      ).toThrow('10 to 16,000 characters');
+    },
+  );
 
   it('requires at least one key image and a caption on every entry', () => {
-    expect(() => validateReport({ report, keys: [] }, images)).toThrow('at least one key image');
-    expect(() => validateReport({ report, keys: [key(0), key(0, '  ')] }, images))
-      .toThrow('Caption 2 is required');
+    expect(() => validateReport({ report, keys: [] }, images)).toThrow(
+      'at least one key image',
+    );
+    expect(() =>
+      validateReport({ report, keys: [key(0), key(0, '  ')] }, images),
+    ).toThrow('Caption 2 is required');
   });
 
   it('keeps the first matching caption and preserves order and distinct captions', () => {
@@ -45,12 +55,16 @@ describe('report validation', () => {
 
   it('applies the limit after merging', () => {
     const keys = Array.from({ length: 16 }, () => key(0, 'Same finding'));
-    expect(validateReport({ report, keys }, images).keys).toEqual([
-      keys[0],
-    ]);
+    expect(validateReport({ report, keys }, images).keys).toEqual([keys[0]]);
     expect(() =>
       validateReport(
-        { report, keys: keys.map((entry, index) => ({ ...entry, caption: `Finding ${index}` })) },
+        {
+          report,
+          keys: keys.map((entry, index) => ({
+            ...entry,
+            caption: `Finding ${index}`,
+          })),
+        },
         images,
       ),
     ).toThrow('up to 15 key images');

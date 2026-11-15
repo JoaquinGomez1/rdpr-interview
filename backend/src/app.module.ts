@@ -1,11 +1,26 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { AppController } from './app.controller.js';
-import { AppService } from './app.service.js';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { Database } from './database.js';
+import { HttpErrorLogger } from './http/http-error-logger.js';
+import { HttpErrorFilter } from './http/http-error.filter.js';
+import { HttpErrorInterceptor } from './http/http-error.interceptor.js';
+import { HttpErrorRepository } from './http/http-error.repository.js';
+import { ProductController } from './products/product.controller.js';
+import { ProductRepository } from './products/product.repository.js';
+import { ProductService } from './products/product.service.js';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true })],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [ProductController],
+  providers: [
+    Database,
+    ProductRepository,
+    ProductService,
+    HttpErrorRepository,
+    HttpErrorLogger,
+    { provide: APP_INTERCEPTOR, useClass: HttpErrorInterceptor },
+    { provide: APP_FILTER, useClass: HttpErrorFilter },
+  ],
 })
 export class AppModule {}
