@@ -1,7 +1,7 @@
 import type { KeyImage, StudyImage } from "./study";
 
 export type ReportPayload = { report: { message: string }; keys: KeyImage[] };
-export type Study = { draftId: string; images: StudyImage[] };
+export type Study = { images: StudyImage[] };
 type CreatedReport = ReportPayload & { id: string };
 type LoadedReport = ReportPayload & { images: StudyImage[] };
 
@@ -41,8 +41,7 @@ function isReport(value: unknown): value is ReportPayload {
 }
 
 export function isStudy(value: unknown): value is Study {
-  return isObject(value) && typeof value.draftId === "string" &&
-    value.draftId.length > 0 && isCatalog(value.images);
+  return isObject(value) && isCatalog(value.images);
 }
 
 export function isCreatedReport(value: unknown): value is CreatedReport {

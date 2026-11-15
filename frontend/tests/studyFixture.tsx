@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { StudyImages } from "../src/pages/root/study";
 
 export const study = {
-  draftId: "test-draft",
   images: ["Frontal chest", "Lateral chest", "Oblique chest", "Axial slice", "Coronal slice"]
     .map((name, view) => ({ view, name, src: `/study/view-${view + 1}.png` })),
 };

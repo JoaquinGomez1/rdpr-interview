@@ -9,7 +9,7 @@ Compose publishes the app on port 3001 so local NestJS can use port 3000 at the 
 ## Editing and saving
 
 - Drag a study thumbnail into the key-image list to add it. To reorder, drag an entry or Tab to it and press Shift+Left or Shift+Right. Keep focus on the moved entry and announce its new position. Show a hint beside the list: “Tab to a key image, then use Shift + ← or → to move it.” Dragging is easy to discover, and the shortcut makes repeated edits faster for frequent users. Start with two desktop panels and decide the narrow-window layout after trying the first build.
-- Keep an unfinished draft in `localStorage`, keyed by a separate draft identifier returned by the API for this browser and study. Restore it on reload at `/`. **Save report** opens a confirmation that the saved report will be read-only. After a successful save, clear the draft and open `/<report UUID>`. **New report** returns to `/`.
+- Keep an unfinished draft under a fixed study key in `localStorage` and restore it on reload at `/`. **Save report** opens a confirmation that the saved report will be read-only. After a successful save, clear the draft and open `/<report UUID>`. **New report** returns to `/`.
 - Saved reports are read-only because the demo has no login or ownership checks. Anyone with the UUID link can view the report, and nobody can modify it after creation.
 - If saving fails, preserve the draft. Use shadcn/ui Sonner for frontend failures so every error toast shows the message immediately. Put the HTTP status and `X-Request-Id` behind **Error details**, with unavailable values labeled for failures that lack response metadata.
 - Require at least 10 characters of trimmed report text and at least one key image, with a nonblank caption for every entry. React Hook Form disables saving and explains the missing inputs on hover or keyboard focus. The API applies the same requirements before merging duplicate key images.
@@ -18,13 +18,12 @@ Compose publishes the app on port 3001 so local NestJS can use port 3000 at the 
 
 **Questions I raised:** How does a reviewer find the study when they open the shared link? Does the URL need a study ID or a study list? Should reviewers see the report I worked on or start with a fresh one? Without a login, how can the app remember their work when they return?
 
-- The root opens a study preloaded with mock images. NestJS issues a persistent browser UUID in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` in production) to identify the local draft. Each saved report gets a separate UUID so the browser can create multiple reports and share each independently.
-- Proposed simplification: everyone uses the same bundled study, with no personal image uploads. Use a fixed study key in browser-local storage to restore drafts without a browser identity cookie. Preserve existing local drafts if the storage key changes.
+- Everyone uses the same static study images and the app has no image uploads. Remove the browser identity cookie because browser-local storage already keeps drafts per browser. Migrate existing drafts to the fixed study key. Each saved report gets its own UUID for sharing.
 - Use the five bundled mock PNGs for the fixed study. NestJS computes their SHA-256 checksums at startup and seeds the image catalog in PostgreSQL.
 - Cap the report at 15 key images to keep it easy to scan. Show the count, explain the limit when reached, and let users edit or remove existing entries. PostgreSQL stores image references, so the cap controls report length.
 - Allow the same study image to appear more than once so it can support different findings. Each addition opens a new entry with a blank caption. The Add key image tooltip lists the positions where the current image already appears.
 - For images with the same checksum and exactly matching nonblank captions, keep the first entry in report order. Enforce the limit on the resulting list and assign contiguous positions.
-- `GET /api/study` gives the draft editor its images and draft identifier. `POST /api/study/report` creates a report and its ordered key images in one transaction. `GET /api/study/report/:id` serves the shareable report and returns `404` for an unknown UUID. Invalid report text, captions and key images return `422`.
+- `GET /api/study` gives the draft editor its images. `POST /api/study/report` creates a report and its ordered key images in one transaction. `GET /api/study/report/:id` serves the shareable report and returns `404` for an unknown UUID. Invalid report text, captions and key images return `422`.
 
 ## Tests
 

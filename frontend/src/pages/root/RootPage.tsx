@@ -43,8 +43,11 @@ export default function RootPage({ reportId }: { reportId?: string }) {
   if (result && result.images.length) {
     return (
       <StudyImages.Provider value={result.images}>
-        {"draftId" in result ? <StudyEditor study={result} /> :
-          <ReportWorkspace draft={result} images={result.images} />}
+        {"report" in result ? (
+          <ReportWorkspace draft={result} images={result.images} />
+        ) : (
+          <StudyEditor study={result} />
+        )}
       </StudyImages.Provider>
     );
   }

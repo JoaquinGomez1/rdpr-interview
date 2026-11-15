@@ -5,7 +5,6 @@ services:
       - '127.0.0.1:3001:3000'
     environment:
       DATABASE_URL: postgres://radpair:radpair@db:5432/radpair
-      SECURE_COOKIES: 'false'
     depends_on:
       db:
         condition: service_healthy

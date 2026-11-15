@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { ProductRepository } from './product.repository.js';
 import { prepareReport, uuidPattern } from './study.js';
 import type {
@@ -21,11 +21,8 @@ export class ProductService {
       .map(({ view, name, src }) => ({ view, name, src }));
   }
 
-  loadStudy(browserId: string): StudyResponse {
-    const draftId = createHash('sha256')
-      .update(`draft:${browserId}`)
-      .digest('hex');
-    return { draftId, images: this.studyImages() };
+  loadStudy(): StudyResponse {
+    return { images: this.studyImages() };
   }
 
   async loadReport(id: string): Promise<SavedReportResponse | null> {

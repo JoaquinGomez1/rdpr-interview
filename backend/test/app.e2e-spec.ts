@@ -29,12 +29,15 @@ describe('Report API', () => {
     vi.unstubAllEnvs();
   });
 
-  it('loads the study and restores the same draft ID for a returning browser', async () => {
-    const browser = request.agent(app.getHttpServer());
-    const { body, headers } = await browser.get('/api/study').expect(200);
+  it('serves the same study catalog without issuing a browser cookie', async () => {
+    const api = request(app.getHttpServer());
+    const { body, headers } = await api.get('/api/study').expect(200);
     expect(body.images).toHaveLength(5);
-    expect(headers['set-cookie'][0]).toContain('HttpOnly');
-    await browser.get('/api/study').expect(200, body);
+    expect(body).toEqual({ images: body.images });
+    expect(headers['set-cookie']).toBeUndefined();
+    await api.get('/api/study')
+      .set('Cookie', `radpair-browser=${randomUUID()}`)
+      .expect(200, body);
   });
 
   it('saves ordered key images and lets another browser open the read-only report', async () => {

@@ -6,9 +6,16 @@ import type { Draft, Study } from "./reportApi";
 import { isUuid, isView } from "./reportContract";
 import { keyImageLimit } from "./study";
 
-const legacyKeys = ["radpair-report-draft", "radpair-annotation-experiment"];
+const storageKey = "radpair-report-draft:mock-study";
 
-function readDraft(storageKey: string, study: Study): Draft | null {
+function legacyDraftKeys() {
+  const keys = Object.keys(localStorage).filter((key) =>
+    /^radpair-report-draft:[a-f\d]{64}$/.test(key),
+  );
+  return [...keys, "radpair-report-draft", "radpair-annotation-experiment"];
+}
+
+function readDraft(study: Study, legacyKeys: string[]): Draft | null {
   const saved =
     localStorage.getItem(storageKey) ??
     legacyKeys.map((key) => localStorage.getItem(key)).find(Boolean);
@@ -79,15 +86,16 @@ function resolveDraft(draft: Draft): ResolverResult<Draft> {
 }
 
 export function useReportDraft(study: Study) {
-  const storageKey = `radpair-report-draft:${study.draftId}`;
-  const [{ initialDraft, restoreFailed }] = useState(() => {
+  const [{ initialDraft, legacyKeys, restoreFailed }] = useState(() => {
     try {
+      const legacyKeys = legacyDraftKeys();
       return {
-        initialDraft: readDraft(storageKey, study) ?? emptyDraft,
+        initialDraft: readDraft(study, legacyKeys) ?? emptyDraft,
+        legacyKeys,
         restoreFailed: false,
       };
     } catch {
-      return { initialDraft: emptyDraft, restoreFailed: true };
+      return { initialDraft: emptyDraft, legacyKeys: [], restoreFailed: true };
     }
   });
   const {
@@ -140,7 +148,7 @@ export function useReportDraft(study: Study) {
     }
     // oxlint-disable-next-line react/set-state-in-effect
     setStorageError(failed);
-  }, [dirty, report, keys, restoreFailed, storageKey]);
+  }, [dirty, report, keys, restoreFailed, legacyKeys]);
 
   useEffect(() => {
     if (storageError) {

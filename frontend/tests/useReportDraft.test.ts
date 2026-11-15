@@ -46,3 +46,22 @@ test("repairs legacy key IDs and preserves the valid entries in order", () => {
   expect(new Set(keys.map((key) => key.id)).size).toBe(3);
   expect(keys.slice(1).every((key) => /^[\da-f-]{36}$/.test(key.id))).toBe(true);
 });
+
+test("migrates a cookie-keyed draft and clears it after saving", () => {
+  const legacyKey = `radpair-report-draft:${"a".repeat(64)}`;
+  const draft = {
+    report: "Findings from the chest study.",
+    keys: [
+      { id: "04fc9ecf-4953-44e7-8a4a-728afbb1c66a", view: 1, caption: "Lateral finding" },
+    ],
+  };
+  localStorage.setItem(legacyKey, JSON.stringify(draft));
+  const { result, unmount } = renderHook(() => useReportDraft(study));
+  expect(result.current.draft).toEqual(draft);
+  expect(localStorage.getItem(legacyKey)).toBeNull();
+  act(() => result.current.clearDraft());
+  unmount();
+
+  const { result: next } = renderHook(() => useReportDraft(study));
+  expect(next.current.draft).toEqual({ report: "", keys: [] });
+});

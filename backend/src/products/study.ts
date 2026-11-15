@@ -7,7 +7,7 @@ export type PublicStudyImage = {
 export type StudyImage = PublicStudyImage & { checksum: string };
 export type KeyImage = { id: string; view: number; caption: string };
 export type Report = { report: { message: string }; keys: KeyImage[] };
-export type StudyResponse = { draftId: string; images: PublicStudyImage[] };
+export type StudyResponse = { images: PublicStudyImage[] };
 export type CreatedReportResponse = Report & { id: string };
 export type SavedReportResponse = Report & { images: PublicStudyImage[] };
 
