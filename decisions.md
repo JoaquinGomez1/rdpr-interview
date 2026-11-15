@@ -45,3 +45,5 @@ Run the local API in watch mode so validation changes stay in sync with Vite dur
 ## Backend structure and error logging
 
 Keep the app module focused on wiring. In `products`, the controller handles HTTP, the service handles report rules, and the repository owns database access and invokes the separate study seed. Generate a new `X-Request-Id` for every request and return it to the client so a reported failure can be matched to its PostgreSQL log entry. Store the error message, path, timestamp, HTTP method, and status.
+
+The demo targets one user and one mock study. Keep setup and maintenance simple, and use the PostgreSQL error log to investigate failed HTTP requests by request ID.
