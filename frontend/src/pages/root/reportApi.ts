@@ -5,7 +5,7 @@ import type { ReportPayload, Study } from "./reportContract";
 export type { Study };
 
 export type Draft = { report: string; keys: KeyImage[] };
-export type SavedReport = Draft & { images: StudyImage[] };
+export type SavedReport = Draft & { images: StudyImage[]; canEdit: boolean };
 
 export class ReportApiError extends Error {
   readonly status: number;
@@ -55,9 +55,10 @@ export function loadStudy(signal: AbortSignal) {
   return request("/api/study", isStudy, { signal });
 }
 
-export function saveReport(draft: Draft) {
-  return request("/api/study/report", isCreatedReport, {
-    method: "POST",
+export function saveReport(draft: Draft, id?: string) {
+  const path = id ? `/api/study/report/${encodeURIComponent(id)}` : "/api/study/report";
+  return request(path, isCreatedReport, {
+    method: id ? "PUT" : "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       report: { message: draft.report },
@@ -71,9 +72,10 @@ export function loadReport(id: string, signal: AbortSignal) {
     `/api/study/report/${encodeURIComponent(id)}`,
     isLoadedReport,
     { signal },
-  ).then(({ report, keys, images }) => ({
+  ).then(({ report, keys, images, canEdit }) => ({
     report: report.message,
     keys,
     images,
+    canEdit,
   }));
 }

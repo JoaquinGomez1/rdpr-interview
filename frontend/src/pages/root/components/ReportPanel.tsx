@@ -10,6 +10,8 @@ export function ReportPanel({
   canSave,
   validationMessage,
   readOnly = false,
+  onEdit,
+  onCancel,
   ...keyImages
 }: KeyImageListProps & {
   report: string;
@@ -18,6 +20,8 @@ export function ReportPanel({
   saving: boolean;
   canSave: boolean;
   validationMessage?: string;
+  onEdit?: () => void;
+  onCancel?: () => void;
 }) {
   return (
     <section className="panel report" aria-labelledby="report-title">
@@ -38,6 +42,8 @@ export function ReportPanel({
         <KeyImageList {...keyImages} readOnly={readOnly} />
       </div>
       <div className="report-actions">
+        {onEdit && <button className="accent" onClick={onEdit}>Edit report</button>}
+        {onCancel && <button disabled={saving} onClick={onCancel}>Cancel edits</button>}
         {readOnly ? (
           <Link className="accent new-report" to="/">
             New report

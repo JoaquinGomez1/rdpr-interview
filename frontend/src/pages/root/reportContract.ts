@@ -3,7 +3,7 @@ import type { KeyImage, StudyImage } from "./study";
 export type ReportPayload = { report: { message: string }; keys: KeyImage[] };
 export type Study = { images: StudyImage[] };
 type CreatedReport = ReportPayload & { id: string };
-type LoadedReport = ReportPayload & { images: StudyImage[] };
+type LoadedReport = ReportPayload & { images: StudyImage[]; canEdit: boolean };
 
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -49,7 +49,7 @@ export function isCreatedReport(value: unknown): value is CreatedReport {
 }
 
 export function isLoadedReport(value: unknown): value is LoadedReport {
-  if (!isObject(value) || !isCatalog(value.images)) return false;
+  if (!isObject(value) || typeof value.canEdit !== "boolean" || !isCatalog(value.images)) return false;
   const views = new Set(value.images.map(({ view }) => view));
   return isReport(value) && value.keys.every(({ view }) => views.has(view));
 }

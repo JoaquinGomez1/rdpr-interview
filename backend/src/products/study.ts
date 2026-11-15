@@ -9,7 +9,10 @@ export type KeyImage = { id: string; view: number; caption: string };
 export type Report = { report: { message: string }; keys: KeyImage[] };
 export type StudyResponse = { images: PublicStudyImage[] };
 export type CreatedReportResponse = Report & { id: string };
-export type SavedReportResponse = Report & { images: PublicStudyImage[] };
+export type SavedReportResponse = Report & {
+  images: PublicStudyImage[];
+  canEdit: boolean;
+};
 
 export class ReportValidationError extends Error {}
 

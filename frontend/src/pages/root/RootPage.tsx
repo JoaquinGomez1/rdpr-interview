@@ -43,8 +43,8 @@ export default function RootPage({ reportId }: { reportId?: string }) {
   if (result && result.images.length) {
     return (
       <StudyImages.Provider value={result.images}>
-        {"report" in result ? (
-          <ReportWorkspace draft={result} images={result.images} />
+        {"report" in result && reportId ? (
+          <SavedReportWorkspace id={reportId} initialReport={result} />
         ) : (
           <StudyEditor study={result} />
         )}
@@ -80,13 +80,46 @@ export default function RootPage({ reportId }: { reportId?: string }) {
   );
 }
 
-function StudyEditor({ study }: { study: Study }) {
-  const editor = useReportDraft(study);
+function SavedReportWorkspace({ id, initialReport }: { id: string; initialReport: SavedReport }) {
+  const [saved, setSaved] = useState(initialReport);
+  const [editing, setEditing] = useState(false);
+  if (editing) {
+    return (
+      <StudyEditor
+        study={saved}
+        savedDraft={saved}
+        reportId={id}
+        onCancel={() => setEditing(false)}
+        onUpdated={(draft) => {
+          setSaved({ ...saved, report: draft.report, keys: draft.keys });
+          setEditing(false);
+        }}
+      />
+    );
+  }
+  return (
+    <ReportWorkspace
+      draft={saved}
+      images={saved.images}
+      onEdit={saved.canEdit ? () => setEditing(true) : undefined}
+    />
+  );
+}
+
+function StudyEditor({ study, savedDraft, ...editing }: {
+  study: Study;
+  savedDraft?: Draft;
+  reportId?: string;
+  onCancel?: () => void;
+  onUpdated?: (draft: Draft) => void;
+}) {
+  const editor = useReportDraft(study, savedDraft);
   return (
     <ReportWorkspace
       draft={editor.draft}
       images={study.images}
       editor={editor}
+      {...editing}
     />
   );
 }
@@ -95,10 +128,18 @@ function ReportWorkspace({
   draft,
   images,
   editor,
+  reportId,
+  onEdit,
+  onCancel,
+  onUpdated,
 }: {
   draft: Draft;
   images: StudyImage[];
   editor?: ReturnType<typeof useReportDraft>;
+  reportId?: string;
+  onEdit?: () => void;
+  onCancel?: () => void;
+  onUpdated?: (draft: Draft) => void;
 }) {
   const navigate = useNavigate();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -108,15 +149,29 @@ function ReportWorkspace({
   const [announcement, setAnnouncement] = useState("");
   const [saving, setSaving] = useState(false);
   const { keys, report } = draft;
+  let status = onEdit ? "Saved report" : "Saved report · Read-only";
+  if (editor) {
+    status = "";
+    if (reportId) status = "Editing saved report";
+    else if (editor.dirty) {
+      status = editor.storageError
+        ? "Draft could not be saved locally"
+        : "Draft saved on this device";
+    }
+  }
 
   async function submit(validDraft: Draft) {
     if (!editor || saving) return;
     setSaving(true);
     try {
-      const saved = await saveReport(validDraft);
+      const saved = await saveReport(validDraft, reportId);
       toast.dismiss("save-report");
-      editor.clearDraft();
-      navigate(`/${saved.id}`, { replace: true });
+      if (onUpdated) {
+        onUpdated(saved);
+      } else {
+        editor.clearDraft();
+        navigate(`/${saved.id}`, { replace: true });
+      }
     } catch (error) {
       showErrorToast(
         error instanceof ReportApiError
@@ -195,15 +250,7 @@ function ReportWorkspace({
           <span className="brand">RADPAIR</span>
           <h1>Study reporting</h1>
         </div>
-        <span className="status" role="status">
-          {editor
-            ? editor.dirty
-              ? editor.storageError
-                ? "Draft could not be saved locally"
-                : "Draft saved on this device"
-              : ""
-            : "Saved report · Read-only"}
-        </span>
+        <span className="status" role="status">{status}</span>
       </header>
       <main className="workspace" data-read-only={!editor || undefined}>
         <StudyPanel
@@ -227,11 +274,13 @@ function ReportWorkspace({
           onMoveKey={moveKey}
           onChangeCaption={changeCaption}
           onRemoveKey={removeKey}
-          submit={editor?.handleSubmit(() => dialog.current?.showModal())}
+          submit={editor && (() => void editor.handleSubmit(() => dialog.current?.showModal())())}
           saving={saving}
           canSave={editor?.isValid ?? false}
           validationMessage={editor?.validationMessage}
           readOnly={!editor}
+          onEdit={onEdit}
+          onCancel={onCancel}
         />
       </main>
       {editor && (
@@ -243,7 +292,9 @@ function ReportWorkspace({
         >
           <h2 id="save-title">Save report?</h2>
           <p id="save-description">
-            This report will be read-only after you save it.
+            {reportId
+              ? "These changes will appear at the existing report link."
+              : "Anyone with the link can view this report. You can edit it from this browser."}
           </p>
           <form method="dialog" className="dialog-actions">
             <button autoFocus>Cancel</button>

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { OnModuleInit } from '@nestjs/common';
+import type { PoolClient } from 'pg';
 import { Database } from '../database.js';
 import type { Report, StudyImage } from './study.js';
 import { seedStudyImages } from './study.seed.js';
@@ -30,6 +31,7 @@ export class ProductRepository implements OnModuleInit {
           ALTER TABLE report_key_images RENAME COLUMN browser_id TO report_id;
         END IF;
       END $$;
+      ALTER TABLE reports ADD COLUMN IF NOT EXISTS owner_client_id uuid;
       CREATE TABLE IF NOT EXISTS report_key_images (
         report_id uuid NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
         id uuid NOT NULL,
@@ -47,49 +49,86 @@ export class ProductRepository implements OnModuleInit {
     return this.images;
   }
 
-  async load(reportId: string) {
-    const { rows } = await this.db.query<Report>(
+  async load(reportId: string, clientId: string) {
+    const { rows } = await this.db.query<Report & { canEdit: boolean }>(
       `
       SELECT jsonb_build_object('message', report) AS report, COALESCE((
         SELECT jsonb_agg(jsonb_build_object('id', id, 'view', view, 'caption', caption) ORDER BY position)
         FROM report_key_images WHERE report_id = $1
-      ), '[]'::jsonb) AS keys
+      ), '[]'::jsonb) AS keys,
+      COALESCE(owner_client_id = $2, false) AS "canEdit"
       FROM reports WHERE id = $1
     `,
-      [reportId],
+      [reportId, clientId],
     );
     return rows[0] ?? null;
   }
 
-  async save(reportId: string, report: Report) {
+  async isOwner(reportId: string, clientId: string) {
+    const { rowCount } = await this.db.query(
+      'SELECT 1 FROM reports WHERE id = $1 AND owner_client_id = $2',
+      [reportId, clientId],
+    );
+    return rowCount === 1;
+  }
+
+  async save(reportId: string, report: Report, clientId: string) {
+    await this.writeTransaction(async (client) => {
+      await client.query(
+        'INSERT INTO reports (id, report, owner_client_id) VALUES ($1, $2, $3)',
+        [reportId, report.report.message, clientId],
+      );
+      await this.insertKeys(client, reportId, report.keys);
+    });
+  }
+
+  async update(reportId: string, report: Report, clientId: string) {
+    return this.writeTransaction(async (client) => {
+      const { rowCount } = await client.query(
+        'UPDATE reports SET report = $2 WHERE id = $1 AND owner_client_id = $3',
+        [reportId, report.report.message, clientId],
+      );
+      if (rowCount !== 1) return false;
+      await client.query('DELETE FROM report_key_images WHERE report_id = $1', [
+        reportId,
+      ]);
+      await this.insertKeys(client, reportId, report.keys);
+      return true;
+    });
+  }
+
+  private async writeTransaction<T>(write: (client: PoolClient) => Promise<T>) {
     const client = await this.db.connect();
     try {
       await client.query('BEGIN');
-      await client.query(
-        `
-        INSERT INTO reports (id, report) VALUES ($1, $2)
-      `,
-        [reportId, report.report.message],
-      );
-      await client.query(
-        `
-        INSERT INTO report_key_images (report_id, id, view, caption, position)
-        SELECT $1, id, view, caption, position
-        FROM jsonb_to_recordset($2::jsonb) AS key_image(id uuid, view integer, caption text, position integer)
-      `,
-        [
-          reportId,
-          JSON.stringify(
-            report.keys.map((key, index) => ({ ...key, position: index + 1 })),
-          ),
-        ],
-      );
+      const result = await write(client);
       await client.query('COMMIT');
+      return result;
     } catch (error) {
       await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
     }
+  }
+
+  private async insertKeys(
+    client: PoolClient,
+    reportId: string,
+    keys: Report['keys'],
+  ) {
+    await client.query(
+      `
+        INSERT INTO report_key_images (report_id, id, view, caption, position)
+        SELECT $1, id, view, caption, position
+        FROM jsonb_to_recordset($2::jsonb) AS key_image(id uuid, view integer, caption text, position integer)
+      `,
+      [
+        reportId,
+        JSON.stringify(
+          keys.map((key, index) => ({ ...key, position: index + 1 })),
+        ),
+      ],
+    );
   }
 }

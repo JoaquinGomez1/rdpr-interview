@@ -85,8 +85,12 @@ function resolveDraft(draft: Draft): ResolverResult<Draft> {
     : { values: draft, errors: {} };
 }
 
-export function useReportDraft(study: Study) {
+export function useReportDraft(study: Study, savedDraft?: Draft) {
   const [{ initialDraft, legacyKeys, restoreFailed }] = useState(() => {
+    if (savedDraft) {
+      const { report, keys } = savedDraft;
+      return { initialDraft: { report, keys }, legacyKeys: [], restoreFailed: false };
+    }
     try {
       const legacyKeys = legacyDraftKeys();
       return {
@@ -109,7 +113,7 @@ export function useReportDraft(study: Study) {
   const report = watch("report");
   const keys = watch("keys");
   const [storageError, setStorageError] = useState(false);
-  const dirty = isDirty || initialDraft !== emptyDraft;
+  const dirty = isDirty || (!savedDraft && initialDraft !== emptyDraft);
 
   useEffect(() => {
     void trigger();
@@ -135,6 +139,7 @@ export function useReportDraft(study: Study) {
   }
 
   useEffect(() => {
+    if (savedDraft) return;
     let failed = false;
     try {
       if (dirty) {
@@ -148,7 +153,7 @@ export function useReportDraft(study: Study) {
     }
     // oxlint-disable-next-line react/set-state-in-effect
     setStorageError(failed);
-  }, [dirty, report, keys, restoreFailed, legacyKeys]);
+  }, [dirty, report, keys, restoreFailed, legacyKeys, savedDraft]);
 
   useEffect(() => {
     if (storageError) {
