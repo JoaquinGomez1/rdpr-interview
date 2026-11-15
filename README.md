@@ -43,4 +43,6 @@ Supabase hosts PostgreSQL. A Render Docker web service builds the root `Dockerfi
 
 To change the database password, open **Database → Settings** in Supabase and choose **Reset database password**. Update `DATABASE_URL` in Render with the new password and redeploy the service.
 
+If Render logs `connect ENETUNREACH` with an IPv6 address on port `5432`, copy the **Session pooler** URI again and update `DATABASE_URL`. The session pooler uses an IPv4 `*.pooler.supabase.com` host and a `postgres.<project-ref>` username.
+
 See [assignment.md](assignment.md) for the brief and [decisions.md](decisions.md) for the design notes.
